@@ -1,26 +1,39 @@
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 默认兜底；工作区/落地页以 loom 表面色为主 */
+  --background: #f8f9ff;
+  --foreground: #0b1c30;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-manrope);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Stitch · Indigo Loom（见 design/stitch/indigo_loom/DESIGN.md） */
+  --color-loom-surface: #f8f9ff;
+  --color-loom-surface-low: #eff4ff;
+  --color-loom-surface-container: #e5eeff;
+  --color-loom-surface-container-high: #dce9ff;
+  --color-loom-surface-container-highest: #d3e4fe;
+  --color-loom-surface-lowest: #ffffff;
+  --color-loom-on-surface: #0b1c30;
+  --color-loom-on-surface-variant: #464555;
+  --color-loom-primary: #3525cd;
+  --color-loom-primary-container: #4f46e5;
+  --color-loom-outline-variant: #c7c4d8;
+  --color-loom-secondary-container: #b6b4ff;
+  --color-loom-on-secondary-container: #454386;
+  --color-loom-secondary: #58579b;
+  --color-loom-primary-fixed-dim: #c3c0ff;
+  --color-loom-secondary-fixed: #e2dfff;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-loom-surface);
+  color: var(--color-loom-on-surface);
+  font-family: var(--font-inter), var(--font-noto-sc, system-ui), sans-serif;
 }

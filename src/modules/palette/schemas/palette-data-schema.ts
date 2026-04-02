@@ -1,0 +1,288 @@
+import { z } from "zod";
+
+export const BRAND_IDS = ["mard", "coco", "manman", "panpan", "mixiaowo"] as const;
+
+export const STANDARD_TIER_LEVELS = [24, 48, 72, 96, 120, 144, 216, 221, 264] as const;
+
+/** COCO 套装档位（与 `coco-standard-tiers.json` 一致；与 MARD 标准档 216/264 不重叠）。 */
+export const COCO_STANDARD_TIER_LEVELS = [
+  24, 48, 72, 96, 120, 144, 168, 192, 221, 293,
+] as const;
+
+/** 漫漫盒装档位（`manman-standard-tiers.json`）；不含 283。 */
+export const MANMAN_STANDARD_TIER_LEVELS = [
+  24, 48, 72, 96, 120, 144, 168, 192,
+] as const;
+
+/** 咪小窝盒装档位（`mixiaowo-standard-tiers.json`）；不含 283。 */
+export const MIXIAOWO_STANDARD_TIER_LEVELS = [
+  24, 48, 72, 96, 120, 144, 168, 192, 216, 221,
+] as const;
+
+export const BRAND_PRESET_SOURCES = [
+  "standard-tier",
+  "brand-specific",
+  "custom",
+] as const;
+
+export const ALLOWED_MAPPING_EXTENSION_KEYS = [
+  "M16",
+  "M17",
+  "P1",
+  "P2",
+  "P3",
+  "P4",
+  "P5",
+  "P6",
+  "P7",
+  "P8",
+  "P9",
+  "P10",
+  "P11",
+  "P12",
+  "P13",
+  "P14",
+  "P15",
+  "P16",
+  "P17",
+  "P18",
+  "P19",
+  "P20",
+  "P21",
+  "P22",
+  "P23",
+  "Q1",
+  "Q2",
+  "Q3",
+  "Q4",
+  "Q5",
+  "R1",
+  "R2",
+  "R3",
+  "R4",
+  "R5",
+  "R6",
+  "R7",
+  "R8",
+  "R9",
+  "R10",
+  "R11",
+  "R12",
+  "R13",
+  "R14",
+  "R15",
+  "R16",
+  "R17",
+  "R18",
+  "R19",
+  "R20",
+  "R21",
+  "R22",
+  "R23",
+  "R24",
+  "R25",
+  "R26",
+  "R27",
+  "R28",
+  "T1",
+  "T2",
+  "T3",
+  "T4",
+  "T5",
+  "T6",
+  "T7",
+  "L2",
+  "L6",
+  "L7",
+  "N1",
+  "N2",
+  "N3",
+  "N4",
+  "W1",
+  "W2",
+  "W3",
+  "W4",
+  "W5",
+  "Y1",
+  "Y2",
+  "Y3",
+  "Y4",
+  "Y5",
+  "X1",
+  "X2",
+  "X3",
+  "X4",
+  "X5",
+  "X6",
+  "X7",
+  "X8",
+  "X9",
+  "X10",
+  "X11",
+  "X12",
+  "X13",
+  "X14",
+  "X15",
+  "X16",
+  "X17",
+  "X18",
+  "X19",
+  "X20",
+  "X21",
+  "X22",
+  "X23",
+  "X24",
+  "X25",
+  "X26",
+  "X27",
+  "X28",
+  "X29",
+  "X30",
+  "X31",
+  "X32",
+  "X33",
+  "X34",
+  "X35",
+  "X36",
+  "X37",
+  "X38",
+  "X39",
+  "X40",
+  "X41",
+  "X42",
+  "X43",
+  "X44",
+  "X45",
+  "X46",
+  "X47",
+  "X48",
+  "X49",
+  "X50",
+  "X51",
+  "X52",
+  "X53",
+  "X54",
+  "X55",
+  "X56",
+  "X57",
+  "X58",
+  "X59",
+  "X60",
+  "X61",
+  "X62",
+  "X63",
+  "X64",
+  "X65",
+  "X66",
+  "X67",
+  "X68",
+  "X69",
+  "X70",
+  "X71",
+  "X72",
+  "X73",
+  "X74",
+  "X75",
+  "X76",
+  "X77",
+  "X78",
+  "X79",
+  "X80",
+] as const;
+
+export const MasterColorSchema = z.object({
+  id: z.string().regex(/^[A-Z]\d+$/),
+  group: z.string().regex(/^[A-Z]+$/),
+  index: z.number().int().positive(),
+  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  r: z.number().int().min(0).max(255),
+  g: z.number().int().min(0).max(255),
+  b: z.number().int().min(0).max(255),
+});
+
+export const BrandMappingSchema = z.record(
+  z.string().regex(/^[A-Z]\d+$/),
+  z.union([z.string(), z.null()]),
+);
+
+const brandPresetNumericTierSchema = z.union([
+  z.literal(24),
+  z.literal(48),
+  z.literal(72),
+  z.literal(96),
+  z.literal(120),
+  z.literal(144),
+  z.literal(168),
+  z.literal(192),
+  z.literal(216),
+  z.literal(221),
+  z.literal(264),
+  z.literal(293),
+]);
+
+export const BrandPresetSchema = z.object({
+  presetId: z.string().regex(
+    /^[a-z]+_(24|48|72|96|120|144|168|192|216|221|264|293)$/,
+  ),
+  brand: z.enum(BRAND_IDS),
+  tier: brandPresetNumericTierSchema,
+  source: z.enum(BRAND_PRESET_SOURCES),
+  availableMasterIds: z.array(z.string().regex(/^[A-Z]\d+$/)),
+});
+
+export const StandardTierSchema = z.object({
+  "24": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "48": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "72": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "96": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "120": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "144": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "216": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "221": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "264": z.array(z.string().regex(/^[A-Z]\d+$/)),
+});
+
+export const CocoStandardTierSchema = z.object({
+  "24": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "48": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "72": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "96": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "120": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "144": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "168": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "192": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "221": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "293": z.array(z.string().regex(/^[A-Z]\d+$/)),
+});
+
+export const ManmanStandardTierSchema = z.object({
+  "24": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "48": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "72": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "96": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "120": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "144": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "168": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "192": z.array(z.string().regex(/^[A-Z]\d+$/)),
+});
+
+export const MixiaowoStandardTierSchema = z.object({
+  "24": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "48": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "72": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "96": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "120": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "144": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "168": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "192": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "216": z.array(z.string().regex(/^[A-Z]\d+$/)),
+  "221": z.array(z.string().regex(/^[A-Z]\d+$/)),
+});
+
+export type MasterColorData = z.infer<typeof MasterColorSchema>;
+export type BrandMappingData = z.infer<typeof BrandMappingSchema>;
+export type BrandPresetData = z.infer<typeof BrandPresetSchema>;
+export type StandardTierData = z.infer<typeof StandardTierSchema>;
+export type CocoStandardTierData = z.infer<typeof CocoStandardTierSchema>;
+export type ManmanStandardTierData = z.infer<typeof ManmanStandardTierSchema>;
+export type MixiaowoStandardTierData = z.infer<typeof MixiaowoStandardTierSchema>;

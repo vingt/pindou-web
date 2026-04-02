@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface": "#0b1c30",
+              "tertiary-fixed-dim": "#ffb695",
+              "on-tertiary-fixed-variant": "#7b2f00",
+              "surface-container": "#e5eeff",
+              "surface-bright": "#f8f9ff",
+              "surface-container-highest": "#d3e4fe",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "on-secondary": "#ffffff",
+              "outline-variant": "#c7c4d8",
+              "tertiary": "#7e3000",
+              "on-primary-fixed-variant": "#3323cc",
+              "on-secondary-fixed-variant": "#413f82",
+              "outline": "#777587",
+              "tertiary-fixed": "#ffdbcc",
+              "inverse-on-surface": "#eaf1ff",
+              "on-error-container": "#93000a",
+              "surface": "#f8f9ff",
+              "primary": "#3525cd",
+              "secondary": "#58579b",
+              "on-primary-fixed": "#0f0069",
+              "inverse-primary": "#c3c0ff",
+              "surface-container-low": "#eff4ff",
+              "surface-tint": "#4d44e3",
+              "surface-variant": "#d3e4fe",
+              "surface-container-high": "#dce9ff",
+              "surface-dim": "#cbdbf5",
+              "primary-fixed-dim": "#c3c0ff",
+              "on-primary-container": "#dad7ff",
+              "background": "#f8f9ff",
+              "secondary-container": "#b6b4ff",
+              "on-secondary-container": "#454386",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary-fixed": "#140f54",
+              "inverse-surface": "#213145",
+              "secondary-fixed": "#e2dfff",
+              "on-tertiary-fixed": "#351000",
+              "primary-container": "#4f46e5",
+              "on-surface-variant": "#464555",
+              "on-error": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-primary": "#ffffff",
+              "tertiary-container": "#a44100",
+              "secondary-fixed-dim": "#c3c0ff",
+              "on-tertiary-container": "#ffd2be",
+              "on-background": "#0b1c30",
+              "primary-fixed": "#e2dfff"
+            },
+            fontFamily: {
+              "headline": ["Inter", "Noto Sans SC"],
+              "body": ["Inter", "Noto Sans SC"],
+              "label": ["Inter", "Noto Sans SC"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bead-grid-bg {
+            background-image: radial-gradient(#c7c4d8 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface selection:bg-primary-fixed-dim selection:text-on-primary-fixed overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#f8f9ff] dark:bg-slate-950 border-b border-[#c7c4d8]/20 dark:border-slate-800/20 flex justify-between items-center px-8 h-16 max-w-full font-['Inter','Noto_Sans_SC'] text-sm tracking-wide transition-all duration-200 ease-in-out">
+<div class="text-xl font-black tracking-tighter text-[#0b1c30] dark:text-slate-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+            拼豆图纸生成器
+        </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-[#464555] dark:text-slate-400 hover:text-[#3525cd] transition-colors hover:bg-[#eff4ff] dark:hover:bg-slate-900 rounded-lg px-3 py-1" href="#">首页</a>
+<a class="text-[#464555] dark:text-slate-400 hover:text-[#3525cd] transition-colors hover:bg-[#eff4ff] dark:hover:bg-slate-900 rounded-lg px-3 py-1" href="#">编辑器</a>
+<a class="text-[#464555] dark:text-slate-400 hover:text-[#3525cd] transition-colors hover:bg-[#eff4ff] dark:hover:bg-slate-900 rounded-lg px-3 py-1" href="#">创作历史</a>
+<a class="text-[#3525cd] dark:text-[#4f46e5] font-bold border-b-2 border-[#3525cd] pb-1" href="#">设置</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container rounded-full transition-colors">notifications</button>
+<div class="h-8 w-8 rounded-full bg-primary-container flex items-center justify-center text-white font-bold text-xs">U</div>
+</div>
+</nav>
+<main class="pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto min-h-screen">
+<!-- Header Section -->
+<header class="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="space-y-2">
+<h1 class="text-4xl md:text-5xl font-black tracking-tight text-on-surface">设置</h1>
+<div class="flex items-center gap-2 text-on-surface-variant bg-surface-container-low px-4 py-2 rounded-lg w-fit">
+<span class="material-symbols-outlined text-sm">database</span>
+<p class="text-sm font-medium">所有数据保存在您的本地浏览器中</p>
+</div>
+</div>
+<button class="group flex items-center gap-2 px-6 py-3 bg-error-container text-on-error-container rounded-full font-bold hover:bg-error hover:text-on-error transition-all duration-300">
+<span class="material-symbols-outlined">restart_alt</span>
+                恢复默认设置
+            </button>
+</header>
+<!-- Tabs & Content -->
+<div class="grid grid-cols-1 gap-8">
+<!-- Tab Switcher -->
+<div class="flex p-1.5 bg-surface-container-low rounded-xl w-fit">
+<button class="px-8 py-3 bg-surface-container-lowest text-primary font-bold rounded-lg shadow-sm">
+                    品牌
+                </button>
+<button class="px-8 py-3 text-on-surface-variant font-medium hover:text-primary transition-colors">
+                    颜色
+                </button>
+<button class="px-8 py-3 text-on-surface-variant font-medium hover:text-primary transition-colors">
+                    套装
+                </button>
+</div>
+<!-- Content Area: Brand Management -->
+<div class="bg-surface-container-lowest rounded-xl p-6 md:p-8 border border-outline-variant/20 shadow-sm">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+<div>
+<h2 class="text-xl font-bold text-on-surface">品牌库</h2>
+<p class="text-sm text-on-surface-variant">管理可用于生成的拼豆品牌及其色彩属性</p>
+</div>
+<button class="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add</span>
+                        新增品牌
+                    </button>
+</div>
+<!-- Brands Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/10">
+<th class="pb-4 pt-2 font-bold text-on-surface-variant text-sm uppercase tracking-wider px-4">品牌名称</th>
+<th class="pb-4 pt-2 font-bold text-on-surface-variant text-sm uppercase tracking-wider px-4">包含颜色</th>
+<th class="pb-4 pt-2 font-bold text-on-surface-variant text-sm uppercase tracking-wider px-4">启用状态</th>
+<th class="pb-4 pt-2 font-bold text-on-surface-variant text-sm uppercase tracking-wider px-4 text-right">操作</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10">
+<!-- Brand Row 1 -->
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 px-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-primary-fixed flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">palette</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Perler</p>
+<p class="text-xs text-on-surface-variant">Standard 5mm</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-4 text-on-surface-variant font-medium">152 种</td>
+<td class="py-6 px-4">
+<span class="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">已启用</span>
+</td>
+<td class="py-6 px-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container hover:text-error rounded-lg transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Brand Row 2 -->
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 px-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-secondary-fixed flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">palette</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Artkal S</p>
+<p class="text-xs text-on-surface-variant">Soft 5mm</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-4 text-on-surface-variant font-medium">194 种</td>
+<td class="py-6 px-4">
+<span class="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">已启用</span>
+</td>
+<td class="py-6 px-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container hover:text-error rounded-lg transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Brand Row 3 -->
+<tr class="group hover:bg-surface-container-low transition-colors">
+<td class="py-6 px-4">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-lg bg-tertiary-fixed flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">palette</span>
+</div>
+<div>
+<p class="font-bold text-on-surface">Hama</p>
+<p class="text-xs text-on-surface-variant">Classic 5mm</p>
+</div>
+</div>
+</td>
+<td class="py-6 px-4 text-on-surface-variant font-medium">84 种</td>
+<td class="py-6 px-4">
+<span class="inline-flex items-center px-3 py-1 rounded-full bg-outline-variant/30 text-on-surface-variant text-xs font-bold">未启用</span>
+</td>
+<td class="py-6 px-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
+<button class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 hover:bg-error-container hover:text-error rounded-lg transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination/Load More Mockup -->
+<div class="mt-8 flex justify-center">
+<button class="text-primary font-bold text-sm hover:underline py-2">查看更多品牌</button>
+</div>
+</div>
+<!-- Bento Info Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="md:col-span-2 bg-gradient-to-br from-primary-container to-primary p-8 rounded-xl text-on-primary-container relative overflow-hidden group">
+<div class="relative z-10">
+<h3 class="text-2xl font-bold mb-2">想添加私有颜色？</h3>
+<p class="opacity-90 mb-6 max-w-md">除了内置品牌外，您还可以在「颜色」选项卡中导入自定义十六进制颜色代码，打造独一无二的拼豆配色方案。</p>
+<button class="px-6 py-2 bg-white text-primary rounded-full font-bold hover:bg-opacity-90 transition-all">立即前往</button>
+</div>
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-[12rem] opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-500">colors</span>
+</div>
+<div class="bg-surface-container-high p-8 rounded-xl border border-outline-variant/20 flex flex-col justify-between">
+<div>
+<h3 class="text-xl font-bold text-on-surface mb-2">套装同步</h3>
+<p class="text-sm text-on-surface-variant">您可以根据手头现有的实物套装，快速筛选可用的颜色。</p>
+</div>
+<div class="mt-6 flex -space-x-2">
+<div class="w-10 h-10 rounded-full border-2 border-white bg-primary"></div>
+<div class="w-10 h-10 rounded-full border-2 border-white bg-secondary"></div>
+<div class="w-10 h-10 rounded-full border-2 border-white bg-tertiary"></div>
+<div class="w-10 h-10 rounded-full border-2 border-white bg-surface-container-highest flex items-center justify-center text-xs font-bold text-on-surface-variant">+5</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full py-12 bg-[#f8f9ff] dark:bg-slate-950 border-t border-[#c7c4d8]/20 flex flex-col items-center gap-4 text-center text-xs font-['Inter'] leading-relaxed opacity-80 hover:opacity-100 transition-opacity">
+<div class="flex gap-6 mb-2">
+<a class="text-[#464555] dark:text-slate-500 hover:text-[#3525cd] underline" href="#">使用条款</a>
+<a class="text-[#464555] dark:text-slate-500 hover:text-[#3525cd] underline" href="#">隐私政策</a>
+<a class="text-[#464555] dark:text-slate-500 hover:text-[#3525cd] underline" href="#">联系我们</a>
+</div>
+<p class="text-[#464555] dark:text-slate-400">© 2024 拼豆图纸生成器 | The Digital Loom</p>
+</footer>
+</body></html>

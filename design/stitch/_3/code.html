@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>编辑器 - 拼豆图纸生成器</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;family=Noto+Sans+SC:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-surface": "#0b1c30",
+              "tertiary-fixed-dim": "#ffb695",
+              "on-tertiary-fixed-variant": "#7b2f00",
+              "surface-container": "#e5eeff",
+              "surface-bright": "#f8f9ff",
+              "surface-container-highest": "#d3e4fe",
+              "error-container": "#ffdad6",
+              "error": "#ba1a1a",
+              "on-secondary": "#ffffff",
+              "outline-variant": "#c7c4d8",
+              "tertiary": "#7e3000",
+              "on-primary-fixed-variant": "#3323cc",
+              "on-secondary-fixed-variant": "#413f82",
+              "outline": "#777587",
+              "tertiary-fixed": "#ffdbcc",
+              "inverse-on-surface": "#eaf1ff",
+              "on-error-container": "#93000a",
+              "surface": "#f8f9ff",
+              "primary": "#3525cd",
+              "secondary": "#58579b",
+              "on-primary-fixed": "#0f0069",
+              "inverse-primary": "#c3c0ff",
+              "surface-container-low": "#eff4ff",
+              "surface-tint": "#4d44e3",
+              "surface-variant": "#d3e4fe",
+              "surface-container-high": "#dce9ff",
+              "surface-dim": "#cbdbf5",
+              "primary-fixed-dim": "#c3c0ff",
+              "on-primary-container": "#dad7ff",
+              "background": "#f8f9ff",
+              "secondary-container": "#b6b4ff",
+              "on-secondary-container": "#454386",
+              "surface-container-lowest": "#ffffff",
+              "on-secondary-fixed": "#140f54",
+              "inverse-surface": "#213145",
+              "secondary-fixed": "#e2dfff",
+              "on-tertiary-fixed": "#351000",
+              "primary-container": "#4f46e5",
+              "on-surface-variant": "#464555",
+              "on-error": "#ffffff",
+              "on-tertiary": "#ffffff",
+              "on-primary": "#ffffff",
+              "tertiary-container": "#a44100",
+              "secondary-fixed-dim": "#c3c0ff",
+              "on-tertiary-container": "#ffd2be",
+              "on-background": "#0b1c30",
+              "primary-fixed": "#e2dfff"
+            },
+            fontFamily: {
+              "headline": ["Inter", "Noto Sans SC"],
+              "body": ["Inter", "Noto Sans SC"],
+              "label": ["Inter", "Noto Sans SC"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+        }
+        .bead-grid-pattern {
+            background-image: radial-gradient(circle, #c7c4d8 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .glass-toolbar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body antialiased overflow-hidden h-screen flex flex-col">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#f8f9ff] border-b border-[#c7c4d8]/20 flex justify-between items-center px-8 h-16 max-w-full font-['Inter','Noto_Sans_SC'] text-sm tracking-wide transition-all duration-200 ease-in-out">
+<div class="flex items-center gap-8">
+<span class="text-xl font-black tracking-tighter text-[#0b1c30]">拼豆图纸生成器</span>
+<div class="hidden md:flex gap-6">
+<a class="text-[#464555] hover:text-[#3525cd] transition-colors hover:bg-[#eff4ff] px-3 py-1 rounded-lg" href="#">首页</a>
+<a class="text-[#3525cd] font-bold border-b-2 border-[#3525cd] pb-1" href="#">编辑器</a>
+<a class="text-[#464555] hover:text-[#3525cd] transition-colors hover:bg-[#eff4ff] px-3 py-1 rounded-lg" href="#">创作历史</a>
+<a class="text-[#464555] hover:text-[#3525cd] transition-colors hover:bg-[#eff4ff] px-3 py-1 rounded-lg" href="#">设置</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low rounded-full">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+<span class="text-xs font-bold text-on-surface-variant">专业版</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-white font-bold text-xs">U</div>
+</div>
+</nav>
+<!-- Editor Sub-Header -->
+<header class="mt-16 h-14 bg-surface-container-lowest border-b border-outline-variant/20 flex items-center justify-between px-8 z-40">
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-container-low rounded-full transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">arrow_back</span>
+</button>
+<div>
+<h1 class="text-base font-bold text-on-surface leading-none">马里奥头像</h1>
+<span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-medium">最后保存于 2分钟前</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-5 py-2 rounded-full bg-surface-container-high text-on-surface-variant text-sm font-medium hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">cloud_upload</span> 自动保存已开启
+            </button>
+<button class="px-6 py-2 rounded-full bg-gradient-to-br from-primary to-primary-container text-white text-sm font-bold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">save</span> 保存项目
+            </button>
+</div>
+</header>
+<!-- Main Workspace Layout -->
+<main class="flex flex-1 overflow-hidden">
+<!-- Left Sidebar: Settings -->
+<aside class="w-[320px] bg-surface-container-low border-r border-outline-variant/20 flex flex-col overflow-y-auto">
+<div class="p-6 space-y-8">
+<!-- Source Image -->
+<section>
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">源图配置</label>
+<div class="relative group aspect-square rounded-lg overflow-hidden bg-surface-container shadow-inner mb-3">
+<img class="w-full h-full object-cover" data-alt="pixel art illustration of a classic video game character head with vibrant primary colors on a white background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIhkPBfOAAvEsZOlR7birPm4PT0QI5JqwY7fmtoiycrQLKz7B3nCK1Ldg0gkUFgDIeOoccIOu_anetrKSK2ACpZvK0Wf1nAMOmP9fy-5DrtNmqIyMe160pvHZKPNc5uWlLYzcxyN712RFNYSllXWLuXnbN6RpuEPvcax93Ly9JhiE_J761NMSi3tu8NGbjgM_Va6iCCVcGKziAEnptJt2TMJ184vlyHrGN4DdpTz0JHK03MSjcOG3Zx_fXtehVSx7ACsjx9PjuSyw"/>
+<div class="absolute inset-0 bg-on-surface/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity cursor-pointer">
+<span class="text-white text-xs font-bold bg-white/20 backdrop-blur-md px-4 py-2 rounded-full border border-white/30">更换图片</span>
+</div>
+</div>
+</section>
+<!-- Board Settings -->
+<section class="space-y-4">
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">画布参数</label>
+<div class="space-y-3">
+<div>
+<span class="text-xs text-on-surface-variant mb-1.5 block">底板尺寸 (Grid Size)</span>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-2 rounded-lg bg-surface-container-lowest border-2 border-primary text-primary font-bold text-sm">29 x 29</button>
+<button class="py-2 rounded-lg bg-surface-container-lowest border-2 border-transparent text-on-surface-variant font-medium text-sm hover:border-outline-variant transition-all">50 x 50</button>
+</div>
+</div>
+<div>
+<span class="text-xs text-on-surface-variant mb-1.5 block">拼豆品牌 (Brand)</span>
+<select class="w-full bg-surface-container-lowest border-none rounded-lg text-sm text-on-surface focus:ring-2 focus:ring-primary">
+<option>Perler Beads (美国)</option>
+<option>Artkal Beads (中国)</option>
+<option>Hama Beads (丹麦)</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Advanced Settings -->
+<section class="space-y-4">
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">高级生成设置</label>
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<span class="text-xs text-on-surface-variant">抖动算法 (Dithering)</span>
+<div class="w-10 h-5 bg-primary rounded-full relative flex items-center">
+<div class="w-4 h-4 bg-white rounded-full absolute right-0.5"></div>
+</div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-xs text-on-surface-variant">色彩平滑 (Smoothness)</span>
+<input class="w-32 h-1 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary" type="range"/>
+</div>
+</div>
+</section>
+<!-- Main Action Button -->
+<button class="w-full py-4 rounded-xl bg-primary text-white font-black text-sm tracking-widest shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all">
+                    重新生成图纸
+                </button>
+</div>
+</aside>
+<!-- Center: Canvas Area -->
+<section class="flex-1 bg-surface relative flex flex-col items-center justify-center overflow-hidden">
+<!-- Float Toolbar -->
+<div class="absolute top-6 glass-toolbar border border-outline-variant/20 rounded-full px-4 py-2 flex items-center gap-1 shadow-xl z-10">
+<button class="p-2 text-primary bg-primary/10 rounded-full transition-transform active:scale-90" title="画笔">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">palette</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors" title="橡皮擦">
+<span class="material-symbols-outlined">ink_eraser</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors" title="吸色器">
+<span class="material-symbols-outlined">colorize</span>
+</button>
+<div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors" title="撤销">
+<span class="material-symbols-outlined">undo</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors" title="重做">
+<span class="material-symbols-outlined">redo</span>
+</button>
+<div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors" title="缩放">
+<span class="material-symbols-outlined">zoom_in</span>
+</button>
+<button class="px-4 py-1.5 ml-2 bg-on-surface text-white text-xs font-bold rounded-full hover:bg-on-surface/90 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">visibility</span> 沉浸拼装
+                </button>
+</div>
+<!-- The Grid Canvas -->
+<div class="w-[600px] h-[600px] bg-surface-container-lowest shadow-2xl rounded-lg p-8 flex items-center justify-center relative overflow-hidden border border-outline-variant/10">
+<div class="w-full h-full bead-grid-pattern relative grid grid-cols-[repeat(29,minmax(0,1fr))] gap-[1px]">
+<!-- Sample Beads Rendering - Loop Simulation -->
+<div class="aspect-square bg-[#E30022] rounded-[2px] shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)]"></div>
+<div class="aspect-square bg-[#E30022] rounded-[2px] shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)]"></div>
+<div class="aspect-square bg-[#E30022] rounded-[2px] shadow-[inset_0_-2px_4px_rgba(0,0,0,0.1)]"></div>
+<!-- Simplified Visual Repr -->
+<div class="col-span-26"></div>
+<div class="aspect-square bg-[#000000] rounded-[2px]"></div>
+<div class="aspect-square bg-[#FFD700] rounded-[2px]"></div>
+<div class="aspect-square bg-[#FFD700] rounded-[2px]"></div>
+<!-- Decorative overlay for grid feel -->
+<div class="absolute inset-0 pointer-events-none border border-primary/5"></div>
+</div>
+</div>
+<!-- Canvas Stats -->
+<div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-4 text-[10px] font-bold text-on-surface-variant uppercase tracking-widest bg-white/40 backdrop-blur-sm px-6 py-2 rounded-full">
+<span>坐标: 14, 22</span>
+<span class="text-outline">|</span>
+<span>缩放: 150%</span>
+<span class="text-outline">|</span>
+<span>已填充: 842 / 841</span>
+</div>
+</section>
+<!-- Right Sidebar: Color Panel -->
+<aside class="w-[340px] bg-surface-container-low border-l border-outline-variant/20 flex flex-col">
+<div class="p-6 flex flex-col h-full gap-8">
+<!-- Active Color -->
+<section>
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">当前选中颜色</label>
+<div class="flex items-center gap-4 bg-surface-container-lowest p-3 rounded-xl shadow-sm border border-outline-variant/10">
+<div class="w-12 h-12 rounded-lg bg-[#E30022] shadow-inner ring-4 ring-primary/20"></div>
+<div class="flex-1">
+<h4 class="text-sm font-bold text-on-surface leading-tight">火焰红 (P01)</h4>
+<p class="text-[10px] text-on-surface-variant">HEX: #E30022 • 需要: 245颗</p>
+</div>
+</div>
+</section>
+<!-- Color Palette -->
+<section class="flex-1 min-h-0 flex flex-col">
+<label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-4">已用颜色统计 (9)</label>
+<div class="flex-1 overflow-y-auto space-y-2 pr-2">
+<!-- Color Row Item -->
+<div class="flex items-center justify-between p-2 rounded-lg bg-white/50 hover:bg-white transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-[#E30022]"></div>
+<div>
+<span class="block text-xs font-bold text-on-surface">火焰红</span>
+<span class="block text-[10px] text-on-surface-variant">245 颗 (1.2 包)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">swap_horiz</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg bg-white/50 hover:bg-white transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-[#F4D03F]"></div>
+<div>
+<span class="block text-xs font-bold text-on-surface">柠檬黄</span>
+<span class="block text-[10px] text-on-surface-variant">112 颗 (0.6 包)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">swap_horiz</span>
+</div>
+<div class="flex items-center justify-between p-2 rounded-lg bg-white/50 hover:bg-white transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-[#000000]"></div>
+<div>
+<span class="block text-xs font-bold text-on-surface">纯黑色</span>
+<span class="block text-[10px] text-on-surface-variant">408 颗 (2.1 包)</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity">swap_horiz</span>
+</div>
+</div>
+</section>
+<!-- Footer Actions -->
+<section class="space-y-3 pt-4 border-t border-outline-variant/20">
+<div class="bg-tertiary-fixed text-on-tertiary-fixed-variant p-3 rounded-lg text-[10px] font-medium leading-relaxed flex gap-2">
+<span class="material-symbols-outlined text-sm">info</span>
+<span>注意：您的库存中「纯黑色」可能不足，建议使用「深灰色」替换。</span>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<button class="py-3 rounded-lg bg-surface-container-highest text-on-surface text-xs font-bold hover:bg-outline-variant transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">image</span> 导出 PNG
+                        </button>
+<button class="py-3 rounded-lg bg-secondary text-white text-xs font-bold hover:bg-secondary-container hover:text-on-secondary-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">picture_as_pdf</span> 打印 PDF
+                        </button>
+</div>
+</section>
+</div>
+</aside>
+</main>
+<!-- Footer Simulation (Hidden on Editor to maximize space) -->
+<footer class="hidden">
+<p>© 2024 拼豆图纸生成器 | The Digital Loom</p>
+</footer>
+</body></html>
