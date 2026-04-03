@@ -168,6 +168,21 @@ function clampTargetGridBeadCount(n: number): number {
   return Math.max(TARGET_GRID_BEAD_MIN, Math.min(TARGET_GRID_BEAD_MAX, i));
 }
 
+/** 与 Tailwind `lg:` 对齐：窄屏使用「准备 → 画板」分步，避免单页纵向堆叠。 */
+const EDITOR_NARROW_MAX_LG = "(max-width: 1023px)";
+
+function useEditorNarrowLayout(): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(EDITOR_NARROW_MAX_LG);
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return narrow;
+}
+
 export function EditorShell() {
   const {
     selectedBrand,
@@ -285,6 +300,13 @@ export function EditorShell() {
   const autoRegenGeneration = useRef(0);
   const [exportError, setExportError] = useState<string | null>(null);
   const sourceImageInputRef = useRef<HTMLInputElement>(null);
+  const narrowWorkbench = useEditorNarrowLayout();
+  const [mobileWorkbenchStep, setMobileWorkbenchStep] = useState<"prepare" | "edit">(
+    "prepare",
+  );
+  const [mobileEditToolsExpanded, setMobileEditToolsExpanded] = useState(false);
+  const mobileWorkbenchHydrated = useRef(false);
+  const mobileSplitUi = narrowWorkbench && !immersiveAssembly;
 
   const [targetGridWidthDraft, setTargetGridWidthDraft] = useState(() =>
     String(targetGridWidth),
@@ -370,6 +392,33 @@ export function EditorShell() {
     if (!immersiveAssembly) return 12 * zoom;
     return Math.max(6, Math.min(128, Math.round(immersiveFitBasePx * zoom)));
   }, [immersiveAssembly, immersiveFitBasePx, zoom]);
+
+  useEffect(() => {
+    if (!narrowWorkbench) return;
+    if (mobileWorkbenchHydrated.current) return;
+    mobileWorkbenchHydrated.current = true;
+    if (useProjectStore.getState().generationResult) {
+      setMobileWorkbenchStep("edit");
+    }
+  }, [narrowWorkbench]);
+
+  useEffect(() => {
+    if (mobileWorkbenchStep === "prepare") {
+      setMobileEditToolsExpanded(false);
+    }
+  }, [mobileWorkbenchStep]);
+
+  const prevGenerationResultRef = useRef(generationResult);
+  useEffect(() => {
+    if (!narrowWorkbench) return;
+    const prev = prevGenerationResultRef.current;
+    prevGenerationResultRef.current = generationResult;
+    if (prev && !generationResult) {
+      setMobileWorkbenchStep("prepare");
+    } else if (prev === null && generationResult) {
+      setMobileWorkbenchStep("edit");
+    }
+  }, [narrowWorkbench, generationResult]);
 
   const effectiveGenerationConfig = useMemo((): GenerationConfig | null => {
     if (!generationResult) return null;
@@ -918,6 +967,12 @@ export function EditorShell() {
       commitPatternGenerationToStore(out);
       setReplaceSourceMasterId(null);
       setReplaceTargetMasterId(null);
+      if (
+        typeof window !== "undefined" &&
+        window.matchMedia(EDITOR_NARROW_MAX_LG).matches
+      ) {
+        setMobileWorkbenchStep("edit");
+      }
       console.log("[generation-config]", out.config);
       console.log("[pattern-generation-result]", {
         width: out.result.width,
@@ -1093,6 +1148,7 @@ export function EditorShell() {
           className={cn(
             "flex flex-col gap-3 border-b border-loom-outline-variant/20 bg-loom-surface-lowest px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 sm:px-4 lg:px-8",
             immersiveAssembly && "hidden",
+            mobileSplitUi && mobileWorkbenchStep === "edit" && "max-lg:hidden",
           )}
         >
           <label className="flex w-full min-w-0 flex-1 flex-col gap-1.5 text-xs text-loom-on-surface-variant sm:min-w-[10rem] sm:flex-row sm:items-center sm:gap-2">
@@ -1139,12 +1195,22 @@ export function EditorShell() {
             immersiveAssembly
               ? "min-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] lg:min-h-[calc(100dvh-0.5rem)]"
               : "min-h-[min(400px,calc(100dvh-9rem))] max-sm:gap-2 lg:min-h-[min(760px,calc(100dvh-7rem))] lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)_minmax(260px,340px)]",
+            mobileSplitUi &&
+              mobileWorkbenchStep === "edit" &&
+              "max-lg:flex max-lg:flex-col max-lg:gap-0 max-lg:overflow-hidden",
+            mobileSplitUi &&
+              mobileWorkbenchStep === "prepare" &&
+              "max-lg:min-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-8rem)] max-lg:grid-rows-1",
           )}
         >
           <aside
             className={cn(
               "order-2 flex min-h-0 flex-col overflow-hidden border-loom-outline-variant/20 bg-loom-surface-low lg:order-none lg:max-h-[calc(100dvh-5rem)] lg:rounded-2xl lg:border lg:bg-loom-surface-container-low lg:shadow-sm lg:ring-1 lg:ring-loom-outline-variant/10",
               immersiveAssembly && "hidden",
+              mobileSplitUi && mobileWorkbenchStep === "edit" && "max-lg:hidden",
+              mobileSplitUi &&
+                mobileWorkbenchStep === "prepare" &&
+                "max-lg:min-h-0 max-lg:flex-1 max-lg:rounded-2xl max-lg:border max-lg:bg-loom-surface-container-low max-lg:shadow-sm max-lg:ring-1 max-lg:ring-loom-outline-variant/10",
             )}
           >
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1659,6 +1725,17 @@ export function EditorShell() {
                 ) : null}
               </div>
             </div>
+              {mobileSplitUi && mobileWorkbenchStep === "prepare" && generationResult ? (
+                <div className="shrink-0 border-t border-loom-outline-variant/20 bg-loom-surface-lowest/98 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] lg:hidden">
+                  <button
+                    type="button"
+                    className="w-full rounded-xl py-3 text-sm font-bold text-white shadow-sm transition loom-primary-gradient hover:opacity-90"
+                    onClick={() => setMobileWorkbenchStep("edit")}
+                  >
+                    进入画板编辑
+                  </button>
+                </div>
+              ) : null}
             </div>
           </aside>
 
@@ -1669,15 +1746,57 @@ export function EditorShell() {
               immersiveAssembly
                 ? "max-lg:min-h-0 max-lg:flex-1 lg:top-2 lg:max-h-[calc(100dvh-1rem)]"
                 : "lg:top-4 lg:max-h-[min(100dvh-5rem,calc(100vh-2rem))]",
+              mobileSplitUi && mobileWorkbenchStep === "prepare" && "max-lg:hidden",
+              mobileSplitUi && mobileWorkbenchStep === "edit" && "max-lg:flex-1 max-lg:min-h-0",
             )}
             aria-label="画布"
           >
+            {mobileSplitUi && mobileWorkbenchStep === "edit" && !immersiveAssembly ? (
+              <div className="flex shrink-0 items-center gap-2 border-b border-loom-outline-variant/20 bg-loom-surface-lowest/95 px-2 py-2 pt-[max(0.25rem,env(safe-area-inset-top,0px))] lg:hidden">
+                <button
+                  type="button"
+                  className="min-h-10 shrink-0 rounded-lg bg-white px-2.5 py-2 text-xs font-semibold text-loom-on-surface ring-1 ring-loom-outline-variant/30 hover:bg-loom-surface-low"
+                  onClick={() => setMobileWorkbenchStep("prepare")}
+                >
+                  图纸设置
+                </button>
+                <span className="min-w-0 flex-1 truncate text-center text-xs font-semibold text-loom-on-surface">
+                  {currentProjectName || "未命名项目"}
+                </span>
+                <button
+                  type="button"
+                  disabled={saveBusy}
+                  className={cn(
+                    "min-h-10 shrink-0 rounded-lg px-2.5 py-2 text-xs font-semibold text-white transition",
+                    saveBusy ? "cursor-wait bg-loom-outline-variant/60" : "loom-primary-gradient hover:opacity-90",
+                  )}
+                  onClick={() => {
+                    setSaveBusy(true);
+                    void saveProject()
+                      .then(() => {
+                        setEditorToast("已保存到创作历史");
+                        window.setTimeout(() => setEditorToast(null), 2200);
+                      })
+                      .catch((e) => {
+                        setEditorToast(e instanceof Error ? e.message : "保存失败");
+                        window.setTimeout(() => setEditorToast(null), 3200);
+                      })
+                      .finally(() => setSaveBusy(false));
+                  }}
+                >
+                  {saveBusy ? "…" : "保存"}
+                </button>
+              </div>
+            ) : null}
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="pointer-events-none absolute inset-0 -z-0 opacity-[0.14] loom-bead-pattern" aria-hidden />
               <div
                 className={cn(
                   "absolute left-1/2 top-4 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-loom-outline-variant/20 bg-white/95 px-2 py-2 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x_pan-y] sm:flex-wrap sm:justify-center sm:overflow-visible sm:gap-1.5 sm:px-3 [&::-webkit-scrollbar]:hidden",
                   immersiveAssembly && "hidden",
+                  mobileSplitUi &&
+                    mobileWorkbenchStep === "edit" &&
+                    "max-lg:top-[3.25rem]",
                 )}
                 role="toolbar"
                 aria-label="画布工具"
@@ -1735,7 +1854,7 @@ export function EditorShell() {
                   disabled={!generationResult || !baselineCells}
                   title="撤销画笔、橡皮、批量替色等编辑，恢复为上次「生成图纸」结果"
                   className={cn(
-                    "hidden shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ring-1 sm:inline-flex",
+                    "inline-flex shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ring-1",
                     generationResult && baselineCells
                       ? "bg-white text-rose-800 ring-rose-200 hover:bg-rose-50"
                       : "cursor-not-allowed bg-loom-surface-container-high text-loom-on-surface-variant ring-loom-outline-variant/10",
@@ -1894,6 +2013,10 @@ export function EditorShell() {
                   immersiveAssembly
                     ? "min-h-0 flex-1 lg:min-h-[calc(100dvh-10rem)]"
                     : "min-h-[min(42svh,min(420px,calc(100dvh-12rem)))] sm:min-h-[min(52vh,520px)]",
+                  mobileSplitUi &&
+                    mobileWorkbenchStep === "edit" &&
+                    !immersiveAssembly &&
+                    "max-lg:!min-h-0 max-lg:flex-1 max-lg:mt-[7.25rem]",
                 )}
               >
                 <div
@@ -2038,9 +2161,86 @@ export function EditorShell() {
             className={cn(
               "order-3 flex min-h-0 flex-col overflow-hidden border-loom-outline-variant/20 bg-loom-surface-low lg:order-none lg:max-h-[calc(100dvh-5rem)] lg:rounded-2xl lg:border lg:bg-loom-surface-container-low lg:shadow-sm lg:ring-1 lg:ring-loom-outline-variant/10",
               immersiveAssembly && "hidden",
+              mobileSplitUi && mobileWorkbenchStep === "prepare" && "max-lg:hidden",
+              mobileSplitUi &&
+                mobileWorkbenchStep === "edit" &&
+                cn(
+                  "max-lg:shrink-0 max-lg:rounded-t-2xl max-lg:border-x-0 max-lg:border-b-0 max-lg:border-t max-lg:border-loom-outline-variant/25 max-lg:bg-loom-surface-container-low max-lg:shadow-[0_-8px_36px_-10px_rgba(15,23,42,0.14)] lg:max-h-[calc(100dvh-5rem)]",
+                  mobileEditToolsExpanded && "max-lg:max-h-[min(58svh,520px)]",
+                ),
             )}
           >
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {mobileSplitUi && mobileWorkbenchStep === "edit" ? (
+              <>
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 border-b border-loom-outline-variant/15 bg-white/95 px-3 py-2.5 text-left lg:hidden"
+                  aria-expanded={mobileEditToolsExpanded}
+                  onClick={() => setMobileEditToolsExpanded((v) => !v)}
+                >
+                  <span className="min-w-0 flex-1 truncate text-xs font-semibold text-loom-on-surface">
+                    {generationResult
+                      ? `颜色与工具 · ${colorUsageStats.length} 色`
+                      : "颜色与工具"}
+                  </span>
+                  <span className="shrink-0 text-[11px] font-semibold text-loom-primary">
+                    {mobileEditToolsExpanded ? "收起" : "展开"}
+                  </span>
+                </button>
+                {!mobileEditToolsExpanded ? (
+                  <div className="flex min-h-[52px] items-center gap-2 border-b border-loom-outline-variant/10 bg-loom-surface-lowest/95 px-2 py-1.5 lg:hidden">
+                    <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-x]">
+                      <div className="flex w-max gap-1.5 pr-1 pt-0.5">
+                        {generationResult
+                          ? colorUsageStats.map((item) => (
+                              <button
+                                key={item.masterId}
+                                type="button"
+                                title={cellEditorDisplayCode(selectedBrand, item.masterId)}
+                                className={cn(
+                                  "size-10 shrink-0 rounded-xl ring-1 ring-loom-outline-variant/30 transition",
+                                  selectedMasterColorId === item.masterId
+                                    ? "ring-2 ring-loom-primary"
+                                    : "hover:ring-loom-primary-container/40",
+                                )}
+                                style={{ backgroundColor: item.hex }}
+                                onClick={() => setSelectedMasterColorId(item.masterId)}
+                              />
+                            ))
+                          : null}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-1">
+                      <button
+                        type="button"
+                        disabled={!canExport}
+                        className="rounded-lg bg-loom-surface-container-highest px-2.5 py-1.5 text-[10px] font-bold text-loom-on-surface ring-1 ring-loom-outline-variant/20 disabled:cursor-not-allowed disabled:opacity-40"
+                        onClick={() => void handleExportPng()}
+                      >
+                        PNG
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canExport}
+                        className="rounded-lg px-2.5 py-1.5 text-[10px] font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-40 loom-primary-gradient hover:opacity-90"
+                        onClick={() => void handleExportPdf()}
+                      >
+                        PDF
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col overflow-hidden",
+                mobileSplitUi &&
+                  mobileWorkbenchStep === "edit" &&
+                  !mobileEditToolsExpanded &&
+                  "max-lg:hidden",
+              )}
+            >
               <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-y-contain px-3 pb-2 pt-3 [-webkit-overflow-scrolling:touch] lg:px-4">
                 <section>
                   <p className="mb-2 text-xs font-bold text-loom-on-surface">当前画笔</p>
