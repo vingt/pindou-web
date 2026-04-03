@@ -154,6 +154,19 @@ function labelTextColorForHex(hex: string): string {
   return luminance > 0.62 ? "#0f172a" : "#ffffff";
 }
 
+/** 与 schema / store 一致：8–500 珠；输入过程中用字符串草稿避免「先打 5 再补 0」被立刻夹成 8。 */
+const TARGET_GRID_BEAD_MIN = 8;
+const TARGET_GRID_BEAD_MAX = 500;
+
+function digitsOnlyGridDraft(raw: string): string {
+  return raw.replace(/\D/g, "");
+}
+
+function clampTargetGridBeadCount(n: number): number {
+  const i = Math.floor(n);
+  return Math.max(TARGET_GRID_BEAD_MIN, Math.min(TARGET_GRID_BEAD_MAX, i));
+}
+
 export function EditorShell() {
   const {
     selectedBrand,
@@ -263,6 +276,43 @@ export function EditorShell() {
   const autoRegenGeneration = useRef(0);
   const [exportError, setExportError] = useState<string | null>(null);
   const sourceImageInputRef = useRef<HTMLInputElement>(null);
+
+  const [targetGridWidthDraft, setTargetGridWidthDraft] = useState(() =>
+    String(targetGridWidth),
+  );
+  const [targetGridHeightDraft, setTargetGridHeightDraft] = useState(() =>
+    String(targetGridHeight),
+  );
+
+  useEffect(() => {
+    setTargetGridWidthDraft(String(targetGridWidth));
+  }, [targetGridWidth]);
+
+  useEffect(() => {
+    setTargetGridHeightDraft(String(targetGridHeight));
+  }, [targetGridHeight]);
+
+  const commitTargetGridWidthDraft = useCallback(() => {
+    const parsed = parseInt(targetGridWidthDraft, 10);
+    if (!Number.isFinite(parsed)) {
+      setTargetGridWidthDraft(String(targetGridWidth));
+      return;
+    }
+    const next = clampTargetGridBeadCount(parsed);
+    setTargetGridWidth(next);
+    setTargetGridWidthDraft(String(next));
+  }, [targetGridWidthDraft, targetGridWidth, setTargetGridWidth]);
+
+  const commitTargetGridHeightDraft = useCallback(() => {
+    const parsed = parseInt(targetGridHeightDraft, 10);
+    if (!Number.isFinite(parsed)) {
+      setTargetGridHeightDraft(String(targetGridHeight));
+      return;
+    }
+    const next = clampTargetGridBeadCount(parsed);
+    setTargetGridHeight(next);
+    setTargetGridHeightDraft(String(next));
+  }, [targetGridHeightDraft, targetGridHeight, setTargetGridHeight]);
 
   const effectiveGenerationConfig = useMemo((): GenerationConfig | null => {
     if (!generationResult) return null;
@@ -718,6 +768,8 @@ export function EditorShell() {
   };
 
   const handleGenerate = async () => {
+    commitTargetGridWidthDraft();
+    commitTargetGridHeightDraft();
     autoRegenGeneration.current += 1;
     setGenerateError(null);
     setPatternGenerationBusy(true);
@@ -1013,22 +1065,36 @@ export function EditorShell() {
                   <label className="block">
                     <span className="mb-0.5 block text-[10px] font-medium text-loom-on-surface-variant">宽</span>
                     <input
-                      type="number"
-                      min={8}
-                      max={500}
-                      value={targetGridWidth}
-                      onChange={(e) => setTargetGridWidth(Number(e.target.value))}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      aria-label="底板网格宽度（珠）"
+                      value={targetGridWidthDraft}
+                      onChange={(e) =>
+                        setTargetGridWidthDraft(digitsOnlyGridDraft(e.target.value))
+                      }
+                      onBlur={commitTargetGridWidthDraft}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
                       className="w-full rounded-lg border border-loom-outline-variant/25 bg-loom-surface-low/80 px-1.5 py-1.5 text-sm text-loom-on-surface outline-none ring-loom-primary-container/40 focus:ring-2"
                     />
                   </label>
                   <label className="block">
                     <span className="mb-0.5 block text-[10px] font-medium text-loom-on-surface-variant">高</span>
                     <input
-                      type="number"
-                      min={8}
-                      max={500}
-                      value={targetGridHeight}
-                      onChange={(e) => setTargetGridHeight(Number(e.target.value))}
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      aria-label="底板网格高度（珠）"
+                      value={targetGridHeightDraft}
+                      onChange={(e) =>
+                        setTargetGridHeightDraft(digitsOnlyGridDraft(e.target.value))
+                      }
+                      onBlur={commitTargetGridHeightDraft}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
                       className="w-full rounded-lg border border-loom-outline-variant/25 bg-loom-surface-low/80 px-1.5 py-1.5 text-sm text-loom-on-surface outline-none ring-loom-primary-container/40 focus:ring-2"
                     />
                   </label>
