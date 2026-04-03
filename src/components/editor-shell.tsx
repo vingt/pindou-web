@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -202,6 +203,10 @@ export function EditorShell() {
     setMissingColorAnalysis,
     setZoom,
     setActiveTool,
+    immersiveAssembly,
+    immersiveFocusMasterId,
+    setImmersiveAssembly,
+    setImmersiveFocusMasterId,
     setSelectedMasterColorId,
     pushHistorySnapshot,
     pushRedoSnapshot,
@@ -259,11 +264,6 @@ export function EditorShell() {
   const [replaceTargetMasterId, setReplaceTargetMasterId] = useState<string | null>(
     null,
   );
-  /** 沉浸拼装：最大化画布区域 + 逐色高亮 */
-  const [immersiveAssembly, setImmersiveAssembly] = useState(false);
-  const [immersiveFocusMasterId, setImmersiveFocusMasterId] = useState<string | null>(
-    null,
-  );
   useEffect(() => {
     const saved = loadUserOptimizationPreference();
     if (saved) {
@@ -313,6 +313,54 @@ export function EditorShell() {
     setTargetGridHeight(next);
     setTargetGridHeightDraft(String(next));
   }, [targetGridHeightDraft, targetGridHeight, setTargetGridHeight]);
+
+  const immersiveGridMeasureRef = useRef<HTMLDivElement>(null);
+  const immersiveStageRef = useRef<HTMLElement>(null);
+  const [immersiveFitBasePx, setImmersiveFitBasePx] = useState(12);
+  const [fullscreenCapable, setFullscreenCapable] = useState(false);
+  const [fullscreenElementActive, setFullscreenElementActive] = useState(false);
+
+  useEffect(() => {
+    setFullscreenCapable(
+      typeof document !== "undefined" &&
+        typeof document.documentElement.requestFullscreen === "function",
+    );
+  }, []);
+
+  useEffect(() => {
+    const onFs = () => setFullscreenElementActive(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!immersiveAssembly || !generationResult) return;
+    const el = immersiveGridMeasureRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const gw = generationResult.width;
+    const gh = generationResult.height;
+    const measure = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      const reserveX = 28;
+      const reserveCaption = 56;
+      const reserveFooter = 44;
+      const capW = Math.max(0, w - reserveX);
+      const capH = Math.max(0, h - reserveCaption - reserveFooter);
+      if (capW <= 0 || capH <= 0) return;
+      const fit = Math.min(capW / gw, capH / gh);
+      setImmersiveFitBasePx(Math.max(6, Math.min(128, Math.floor(fit))));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [immersiveAssembly, generationResult]);
+
+  const immersiveCellPx = useMemo(() => {
+    if (!immersiveAssembly) return 12 * zoom;
+    return Math.max(6, Math.min(128, Math.round(immersiveFitBasePx * zoom)));
+  }, [immersiveAssembly, immersiveFitBasePx, zoom]);
 
   const effectiveGenerationConfig = useMemo((): GenerationConfig | null => {
     if (!generationResult) return null;
@@ -404,19 +452,44 @@ export function EditorShell() {
     setSelectedMasterColorId(id);
   }, [colorUsageStats, immersiveColorIndex, setSelectedMasterColorId]);
 
+  const exitImmersiveAssembly = useCallback(() => {
+    if (typeof document !== "undefined" && document.fullscreenElement) {
+      void document.exitFullscreen().catch(() => {});
+    }
+    setImmersiveAssembly(false);
+  }, [setImmersiveAssembly]);
+
+  const toggleImmersiveFullscreen = useCallback(() => {
+    const el = immersiveStageRef.current;
+    if (!el || !fullscreenCapable) return;
+    if (!document.fullscreenElement) {
+      void el.requestFullscreen().catch(() => {});
+    } else {
+      void document.exitFullscreen().catch(() => {});
+    }
+  }, [fullscreenCapable]);
+
   const enterImmersiveAssembly = useCallback(() => {
     if (!generationResult || colorUsageStats.length === 0) return;
     const first = colorUsageStats[0]!.masterId;
     setImmersiveFocusMasterId(first);
     setSelectedMasterColorId(first);
+    setActiveTool("brush");
     setImmersiveAssembly(true);
-  }, [colorUsageStats, generationResult, setSelectedMasterColorId]);
+  }, [
+    colorUsageStats,
+    generationResult,
+    setActiveTool,
+    setImmersiveAssembly,
+    setImmersiveFocusMasterId,
+    setSelectedMasterColorId,
+  ]);
 
   useEffect(() => {
     if (!immersiveAssembly) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setImmersiveAssembly(false);
+        exitImmersiveAssembly();
         return;
       }
       if (e.key === "ArrowLeft" && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -430,7 +503,7 @@ export function EditorShell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [immersiveAssembly, immersiveNextColor, immersivePrevColor]);
+  }, [immersiveAssembly, exitImmersiveAssembly, immersiveNextColor, immersivePrevColor]);
 
   const applyEditedCells = (
     nextCells: PatternCell[][],
@@ -940,13 +1013,17 @@ export function EditorShell() {
     <div
       className={cn(
         "min-h-0 bg-transparent text-loom-on-surface",
-        immersiveAssembly ? "p-1 sm:p-2 lg:p-3" : "p-2 sm:p-4 lg:p-6",
+        immersiveAssembly
+          ? "flex min-h-0 flex-1 flex-col p-0 sm:p-1 lg:p-2"
+          : "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4 sm:pb-4 lg:p-6",
       )}
     >
       <div
         className={cn(
           "mx-auto flex w-full min-w-0 flex-col gap-4",
-          immersiveAssembly ? "max-w-none" : "max-w-[min(100%,var(--workspace-max))]",
+          immersiveAssembly
+            ? "max-w-none min-h-0 flex-1"
+            : "max-w-[min(100%,var(--workspace-max))]",
         )}
       >
         <div
@@ -997,8 +1074,8 @@ export function EditorShell() {
           className={cn(
             "grid min-h-0 grid-cols-1 items-stretch gap-3 sm:gap-4 lg:min-h-[calc(100dvh-5rem)] lg:gap-3",
             immersiveAssembly
-              ? "min-h-[min(480px,calc(100dvh-5rem))] lg:min-h-[min(760px,calc(100dvh-4rem))]"
-              : "min-h-[min(400px,calc(100dvh-9rem))] lg:min-h-[min(760px,calc(100dvh-7rem))] lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)_minmax(260px,340px)]",
+              ? "min-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-1 lg:min-h-[calc(100dvh-0.5rem)]"
+              : "min-h-[min(400px,calc(100dvh-9rem))] max-sm:gap-2 lg:min-h-[min(760px,calc(100dvh-7rem))] lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)_minmax(260px,340px)]",
           )}
         >
           <aside
@@ -1523,10 +1600,11 @@ export function EditorShell() {
           </aside>
 
           <section
+            ref={immersiveStageRef}
             className={cn(
               "relative order-1 flex min-h-0 min-w-0 flex-col bg-loom-surface lg:order-none lg:sticky lg:z-20 lg:self-start lg:overflow-hidden",
               immersiveAssembly
-                ? "lg:top-2 lg:max-h-[calc(100dvh-2.5rem)]"
+                ? "max-lg:min-h-0 max-lg:flex-1 lg:top-2 lg:max-h-[calc(100dvh-1rem)]"
                 : "lg:top-4 lg:max-h-[min(100dvh-5rem,calc(100vh-2rem))]",
             )}
             aria-label="画布"
@@ -1534,7 +1612,10 @@ export function EditorShell() {
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="pointer-events-none absolute inset-0 -z-0 opacity-[0.14] loom-bead-pattern" aria-hidden />
               <div
-                className="absolute left-1/2 top-4 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-loom-outline-variant/20 bg-white/95 px-2 py-2 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-visible sm:gap-1.5 sm:px-3 [&::-webkit-scrollbar]:hidden"
+                className={cn(
+                  "absolute left-1/2 top-4 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-loom-outline-variant/20 bg-white/95 px-2 py-2 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-visible sm:gap-1.5 sm:px-3 [&::-webkit-scrollbar]:hidden",
+                  immersiveAssembly && "hidden",
+                )}
                 role="toolbar"
                 aria-label="画布工具"
               >
@@ -1648,50 +1729,66 @@ export function EditorShell() {
               </div>
 
               {immersiveAssembly ? (
-                <div className="absolute left-1/2 top-[3.75rem] z-20 flex w-[calc(100%-1.25rem)] max-w-4xl -translate-x-1/2 flex-col gap-2 rounded-full border border-loom-outline-variant/20 px-3 py-2 loom-glass sm:flex-row sm:flex-wrap sm:items-center shadow-xl">
-                  <div className="flex flex-wrap items-center gap-1.5">
+                <div
+                  className="absolute left-1/2 top-0 z-20 flex w-[calc(100%-0.75rem)] max-w-5xl -translate-x-1/2 flex-col gap-2 rounded-2xl border border-loom-outline-variant/25 px-2 pb-2 pt-[max(0.5rem,env(safe-area-inset-top,0px))] shadow-xl backdrop-blur-md sm:left-1/2 sm:w-[calc(100%-1.25rem)] sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 sm:px-3 sm:py-2.5"
+                  style={{ background: "rgba(255,255,255,0.94)" }}
+                >
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
-                      className="rounded-lg bg-white px-2.5 py-1.5 text-xs font-medium text-loom-on-surface ring-1 ring-loom-primary-container/40 hover:bg-loom-surface-low"
-                      onClick={() => setImmersiveAssembly(false)}
+                      className="min-h-11 min-w-[5.5rem] rounded-xl bg-white px-3 py-2 text-xs font-semibold text-loom-on-surface ring-2 ring-loom-primary-container/35 hover:bg-loom-surface-low sm:min-h-10"
+                      onClick={exitImmersiveAssembly}
                     >
                       退出沉浸
                     </button>
-                    <span className="text-[10px] font-medium text-loom-on-surface-variant">Esc</span>
+                    <span className="hidden text-[10px] font-medium text-loom-on-surface-variant sm:inline">
+                      Esc
+                    </span>
+                    {fullscreenCapable ? (
+                      <button
+                        type="button"
+                        className="min-h-11 rounded-xl bg-loom-on-surface px-3 py-2 text-xs font-semibold text-white hover:opacity-90 sm:min-h-10"
+                        onClick={() => void toggleImmersiveFullscreen()}
+                      >
+                        {fullscreenElementActive ? "退出全屏" : "全屏底板"}
+                      </button>
+                    ) : null}
                   </div>
-                  <div className="hidden h-6 w-px bg-loom-surface-container-highest sm:block" aria-hidden />
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-medium text-loom-on-surface-variant">逐色</span>
+                  <div className="hidden h-8 w-px shrink-0 bg-loom-outline-variant/30 sm:block" aria-hidden />
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="w-full text-[11px] font-semibold text-loom-on-surface-variant sm:w-auto">
+                      逐色
+                    </span>
                     <button
                       type="button"
-                      className="rounded-lg bg-white px-2 py-1.5 text-xs font-medium text-loom-on-surface ring-1 ring-loom-outline-variant/25 hover:bg-loom-surface-low"
+                      className="min-h-11 flex-1 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-loom-on-surface ring-1 ring-loom-outline-variant/30 hover:bg-loom-surface-low sm:min-h-10 sm:flex-none"
                       onClick={immersivePrevColor}
                     >
-                      上一色 ←
+                      上一色
                     </button>
                     <button
                       type="button"
-                      className="rounded-lg bg-white px-2 py-1.5 text-xs font-medium text-loom-on-surface ring-1 ring-loom-outline-variant/25 hover:bg-loom-surface-low"
+                      className="min-h-11 flex-1 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-loom-on-surface ring-1 ring-loom-outline-variant/30 hover:bg-loom-surface-low sm:min-h-10 sm:flex-none"
                       onClick={immersiveNextColor}
                     >
-                      下一色 →
+                      下一色
                     </button>
                     <button
                       type="button"
                       aria-pressed={immersiveFocusMasterId === null}
                       className={cn(
-                        "rounded-lg px-2 py-1.5 text-xs font-medium ring-1 transition",
+                        "min-h-11 w-full rounded-xl px-3 py-2 text-xs font-semibold ring-1 transition sm:min-h-10 sm:w-auto",
                         immersiveFocusMasterId === null
                           ? "loom-primary-gradient text-white ring-loom-primary hover:opacity-90"
-                          : "bg-white text-loom-on-surface ring-loom-outline-variant/25 hover:bg-loom-surface-low",
+                          : "bg-white text-loom-on-surface ring-loom-outline-variant/30 hover:bg-loom-surface-low",
                       )}
                       onClick={() => setImmersiveFocusMasterId(null)}
                     >
                       显示全部
                     </button>
                   </div>
-                  <div className="min-w-0 flex-1 overflow-x-auto pb-1 sm:pb-0">
-                    <div className="flex w-max gap-1">
+                  <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch]">
+                    <div className="flex w-max gap-1.5 pr-1">
                       {colorUsageStats.map((s) => {
                         const active = immersiveFocusMasterId === s.masterId;
                         return (
@@ -1700,10 +1797,10 @@ export function EditorShell() {
                             type="button"
                             title={`${cellEditorDisplayCode(selectedBrand, s.masterId)} · ${s.count} 颗`}
                             className={cn(
-                              "flex shrink-0 items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-medium ring-1 transition",
+                              "flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-[11px] font-semibold ring-1 transition sm:min-h-10",
                               active
                                 ? "loom-primary-gradient text-white ring-loom-primary hover:opacity-90"
-                                : "bg-white text-loom-on-surface ring-loom-outline-variant/25 hover:bg-loom-surface-low",
+                                : "bg-white text-loom-on-surface ring-loom-outline-variant/30 hover:bg-loom-surface-low",
                             )}
                             onClick={() => {
                               setImmersiveFocusMasterId(s.masterId);
@@ -1711,7 +1808,7 @@ export function EditorShell() {
                             }}
                           >
                             <span
-                              className="size-3.5 shrink-0 rounded border border-loom-outline-variant/30"
+                              className="size-4 shrink-0 rounded-md border border-loom-outline-variant/30"
                               style={{ backgroundColor: s.hex }}
                               aria-hidden
                             />
@@ -1730,25 +1827,38 @@ export function EditorShell() {
               <div
                 className={cn(
                   "relative z-0 mx-1.5 mb-2 mt-[4.25rem] flex min-h-0 flex-1 flex-col sm:mx-3",
-                  immersiveAssembly && "mt-[8rem]",
+                  immersiveAssembly && "mt-[min(13rem,calc(env(safe-area-inset-top,0px)+11.5rem))] sm:mt-36",
                   immersiveAssembly
-                    ? "min-h-[min(50svh,calc(100dvh-14rem))] lg:min-h-[calc(100dvh-12rem)]"
+                    ? "min-h-0 flex-1 lg:min-h-[calc(100dvh-10rem)]"
                     : "min-h-[min(42svh,min(420px,calc(100dvh-12rem)))] sm:min-h-[min(52vh,520px)]",
                 )}
               >
-                <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-loom-outline-variant/20 bg-white shadow-sm">
+                <div
+                  ref={immersiveGridMeasureRef}
+                  className="min-h-0 flex-1 overflow-auto rounded-lg border border-loom-outline-variant/20 bg-white shadow-sm"
+                >
                 {(() => {
                   void eraserDisplayTick;
                   const gw = generationResult?.width ?? targetGridWidth;
                   const gh = generationResult?.height ?? targetGridHeight;
-                  const cellPx = 12 * zoom;
+                  const cellPx = immersiveCellPx;
                   const liveCells = generationResult
                     ? (eraserSessionRef.current.draft ?? generationResult.cells)
                     : null;
                   const canEdit = Boolean(generationResult);
                   return (
-                    <div className="flex min-h-full min-w-min flex-col items-center px-4 py-6 sm:px-8 sm:py-8">
-                      <p className="mb-4 w-full max-w-[min(100%,80rem)] text-center text-[11px] text-loom-on-surface-variant">
+                    <div
+                      className={cn(
+                        "flex min-h-full min-w-min flex-col items-center px-3 py-4 sm:px-8 sm:py-8",
+                        immersiveAssembly && "px-2 py-3 sm:px-4 sm:py-4",
+                      )}
+                    >
+                      <p
+                        className={cn(
+                          "mb-4 w-full max-w-[min(100%,80rem)] text-center text-[11px] text-loom-on-surface-variant",
+                          immersiveAssembly && "mb-2 text-[10px] sm:mb-3 sm:text-[11px]",
+                        )}
+                      >
                         底板网格 <strong>{gw}×{gh}</strong> 珠
                         {generationResult
                           ? " · 格内为当前品牌色号"
@@ -1775,20 +1885,28 @@ export function EditorShell() {
                               ? "空白格"
                               : cellTooltipLabel(selectedBrand, mid!, color?.hex ?? "");
                             const showCode = !isEmpty && cellPx >= 11;
+                            const immersiveSpotlight =
+                              immersiveAssembly &&
+                              immersiveFocusMasterId !== null &&
+                              !isEmpty &&
+                              mid === immersiveFocusMasterId;
                             const immersiveDim =
                               immersiveAssembly &&
                               immersiveFocusMasterId !== null &&
-                              (isEmpty || mid !== immersiveFocusMasterId);
+                              !immersiveSpotlight;
                             return (
                               <div
                                 key={`${x}-${y}`}
                                 title={tip}
                                 className={cn(
-                                  "relative box-border border border-loom-outline-variant/25 transition-[opacity,filter] duration-150",
+                                  "relative box-border border border-loom-outline-variant/25 transition-[opacity,filter,box-shadow] duration-150",
                                   canEdit && activeTool !== "select"
                                     ? "cursor-pointer"
                                     : "cursor-default",
-                                  immersiveDim && "opacity-[0.2] grayscale-[0.35]",
+                                  immersiveDim &&
+                                    "opacity-[0.06] brightness-[0.35] contrast-[0.85] saturate-[0.35]",
+                                  immersiveSpotlight &&
+                                    "z-[2] ring-2 ring-amber-400 shadow-[0_0_0_1px_rgba(255,255,255,0.9),0_0_12px_2px_rgba(251,191,36,0.65)]",
                                 )}
                                 style={{
                                   width: cellPx,
@@ -1836,7 +1954,11 @@ export function EditorShell() {
                 })()}
                 </div>
                 <p
-                  className="shrink-0 border-t border-loom-outline-variant/10 pt-2 text-center text-xs text-loom-on-surface-variant"
+                  className={cn(
+                    "shrink-0 border-t border-loom-outline-variant/10 pt-2 text-center text-xs text-loom-on-surface-variant",
+                    immersiveAssembly &&
+                      "pt-1.5 text-[10px] leading-tight text-loom-on-surface-variant/90 sm:text-xs",
+                  )}
                   aria-live="polite"
                 >
                   坐标 {hoverGridCell ? `${hoverGridCell.x}，${hoverGridCell.y}` : "—"} · 缩放{" "}

@@ -76,7 +76,13 @@ export type ProjectUiState = {
   baselineCells: PatternCell[][] | null;
   /** `tier === "custom"` 时使用；存 MARD 主色编号。 */
   customPaletteMasterIds: string[];
+  /** 沉浸逐色拼装：隐藏工作区顶栏与画布工具栏，专注底板。 */
+  immersiveAssembly: boolean;
+  /** 沉浸模式下高亮的色号（null = 显示全部且不暗化）。 */
+  immersiveFocusMasterId: string | null;
   setCustomPaletteMasterIds: (ids: string[]) => void;
+  setImmersiveAssembly: (value: boolean) => void;
+  setImmersiveFocusMasterId: (value: string | null) => void;
   setSelectedBrand: (value: BrandId) => void;
   setSelectedPresetId: (value: BrandPresetId) => void;
   /** Select a preset row from settings (keeps tier + presetId in sync). */
@@ -160,7 +166,15 @@ export const useProjectStore = create<ProjectUiState>((set) => ({
   redoStack: [],
   baselineCells: null,
   customPaletteMasterIds: [],
+  immersiveAssembly: false,
+  immersiveFocusMasterId: null,
   setCustomPaletteMasterIds: (ids) => set({ customPaletteMasterIds: [...new Set(ids)] }),
+  setImmersiveAssembly: (value) =>
+    set({
+      immersiveAssembly: value,
+      ...(value ? {} : { immersiveFocusMasterId: null }),
+    }),
+  setImmersiveFocusMasterId: (value) => set({ immersiveFocusMasterId: value }),
   setSelectedBrand: (value) =>
     set((state) => ({
       selectedBrand: value,
@@ -206,6 +220,8 @@ export const useProjectStore = create<ProjectUiState>((set) => ({
       redoStack: [],
       lastGeneratedConfig: null,
       baselineCells: null,
+      immersiveAssembly: false,
+      immersiveFocusMasterId: null,
     }),
   setGenerationResult: (value) =>
     set({
@@ -214,7 +230,12 @@ export const useProjectStore = create<ProjectUiState>((set) => ({
       historyStack: [],
       redoStack: [],
       ...(value === null
-        ? { lastGeneratedConfig: null, baselineCells: null }
+        ? {
+            lastGeneratedConfig: null,
+            baselineCells: null,
+            immersiveAssembly: false,
+            immersiveFocusMasterId: null,
+          }
         : {}),
     }),
   setEditedGenerationResult: (value) => set({ generationResult: value }),
@@ -274,6 +295,8 @@ export const useProjectStore = create<ProjectUiState>((set) => ({
         redoStack: [],
         baselineCells: null,
         customPaletteMasterIds: [],
+        immersiveAssembly: false,
+        immersiveFocusMasterId: null,
       };
     }),
   setZoom: (value) => set({ zoom: value }),

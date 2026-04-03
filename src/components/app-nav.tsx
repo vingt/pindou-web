@@ -32,13 +32,13 @@ export function AppNav({ className, variant = "default" }: AppNavProps) {
   const gap = variant === "compact" ? "gap-0.5 sm:gap-1" : "gap-2 sm:gap-6";
   const linkPad =
     variant === "compact"
-      ? "shrink-0 px-2 py-1.5 text-xs sm:px-3 sm:py-1.5 sm:text-sm"
+      ? "shrink-0 min-h-11 items-center px-2 py-2 text-xs sm:min-h-0 sm:px-3 sm:py-1.5 sm:text-sm"
       : "px-3 py-1.5";
 
   return (
     <nav
       className={cn(
-        "flex max-w-full items-center font-medium tracking-tight text-sm",
+        "flex max-w-full items-center font-medium tracking-tight text-sm touch-manipulation",
         variant === "compact"
           ? "flex-nowrap overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           : "flex-wrap",
