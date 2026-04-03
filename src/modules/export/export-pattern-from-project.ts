@@ -53,5 +53,5 @@ export async function downloadPatternExportForProject(
   const filename = format === "png" ? `${stem}_${part}.png` : `${stem}_${part}.pdf`;
   const blob =
     format === "png" ? await exportPatternPng(payload) : await exportPatternPdf(payload);
-  downloadBlob(blob, filename);
+  await downloadBlob(blob, filename);
 }

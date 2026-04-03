@@ -172,8 +172,11 @@ function clampTargetGridBeadCount(n: number): number {
 const EDITOR_NARROW_MAX_LG = "(max-width: 1023px)";
 
 function useEditorNarrowLayout(): boolean {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
+  const [narrow, setNarrow] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(EDITOR_NARROW_MAX_LG).matches;
+  });
+  useLayoutEffect(() => {
     const mq = window.matchMedia(EDITOR_NARROW_MAX_LG);
     const apply = () => setNarrow(mq.matches);
     apply();
@@ -305,8 +308,20 @@ export function EditorShell() {
     "prepare",
   );
   const [mobileEditToolsExpanded, setMobileEditToolsExpanded] = useState(false);
+  /** 窄屏画板：相对「一屏刚好放下」的捏合倍数，与桌面 store.zoom 解耦 */
+  const [mobileCanvasPinchScale, setMobileCanvasPinchScale] = useState(1);
+  const mobileCanvasPinchScaleRef = useRef(1);
   const mobileWorkbenchHydrated = useRef(false);
   const mobileSplitUi = narrowWorkbench && !immersiveAssembly;
+  const mobileNarrowCanvasPinchOverflow =
+    mobileSplitUi &&
+    mobileWorkbenchStep === "edit" &&
+    !immersiveAssembly &&
+    mobileCanvasPinchScale > 1.02;
+  const narrowEditCanvasLayout =
+    !immersiveAssembly &&
+    narrowWorkbench &&
+    mobileWorkbenchStep === "edit";
 
   const [targetGridWidthDraft, setTargetGridWidthDraft] = useState(() =>
     String(targetGridWidth),
@@ -347,7 +362,8 @@ export function EditorShell() {
 
   const immersiveGridMeasureRef = useRef<HTMLDivElement>(null);
   const immersiveStageRef = useRef<HTMLElement>(null);
-  const [immersiveFitBasePx, setImmersiveFitBasePx] = useState(12);
+  /** 当前视口下每格最大边长（再乘 zoom 后窄屏编辑会限制不超过本值以免横向溢出） */
+  const [gridFitCapPx, setGridFitCapPx] = useState(12);
   const [fullscreenCapable, setFullscreenCapable] = useState(false);
   const [fullscreenElementActive, setFullscreenElementActive] = useState(false);
 
@@ -364,8 +380,29 @@ export function EditorShell() {
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
+  useEffect(() => {
+    mobileCanvasPinchScaleRef.current = mobileCanvasPinchScale;
+  }, [mobileCanvasPinchScale]);
+
+  const prevGenGridKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!generationResult) {
+      prevGenGridKeyRef.current = null;
+      return;
+    }
+    const key = `${generationResult.width}×${generationResult.height}`;
+    if (prevGenGridKeyRef.current !== key) {
+      prevGenGridKeyRef.current = key;
+      setMobileCanvasPinchScale(1);
+    }
+  }, [generationResult]);
+
+  /**
+   * 只要有图纸就按「画布滚动区」实际宽高算每格上限，保证 gw×gh 落在容器内。
+   * 不再依赖窄屏判断；桌面三栏、平板、手机共用同一套测量。
+   */
   useLayoutEffect(() => {
-    if (!immersiveAssembly || !generationResult) return;
+    if (!generationResult) return;
     const el = immersiveGridMeasureRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const gw = generationResult.width;
@@ -373,25 +410,145 @@ export function EditorShell() {
     const measure = () => {
       const w = el.clientWidth;
       const h = el.clientHeight;
-      const reserveX = 28;
-      const reserveCaption = 56;
-      const reserveFooter = 44;
-      const capW = Math.max(0, w - reserveX);
-      const capH = Math.max(0, h - reserveCaption - reserveFooter);
-      if (capW <= 0 || capH <= 0) return;
-      const fit = Math.min(capW / gw, capH / gh);
-      setImmersiveFitBasePx(Math.max(6, Math.min(128, Math.floor(fit))));
+      if (w <= 8) return;
+
+      const narrowEdit =
+        !immersiveAssembly &&
+        narrowWorkbench &&
+        mobileWorkbenchStep === "edit";
+
+      let innerPadX: number;
+      let topChrome: number;
+      let bottomChrome: number;
+      if (immersiveAssembly) {
+        innerPadX = 28;
+        topChrome = 56;
+        bottomChrome = 44;
+      } else if (narrowEdit) {
+        innerPadX = 32;
+        topChrome = 50;
+        bottomChrome = 20;
+      } else {
+        innerPadX = 80;
+        topChrome = 80;
+        bottomChrome = 28;
+      }
+
+      const capW = Math.max(0, w - innerPadX);
+      const capH = Math.max(0, h - topChrome - bottomChrome);
+      if (capW <= 0) return;
+
+      const byW = Math.floor(capW / gw);
+      const byH = capH > 0 ? Math.floor(capH / gh) : byW;
+      let floorFit = Math.min(byW, byH);
+      if (capH <= 0 || !Number.isFinite(floorFit) || floorFit <= 0) {
+        floorFit = byW;
+      }
+      setGridFitCapPx(
+        Math.max(narrowEdit ? 4 : 6, Math.min(128, floorFit)),
+      );
     };
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [immersiveAssembly, generationResult]);
+  }, [
+    immersiveAssembly,
+    generationResult,
+    narrowWorkbench,
+    mobileWorkbenchStep,
+  ]);
 
-  const immersiveCellPx = useMemo(() => {
-    if (!immersiveAssembly) return 12 * zoom;
-    return Math.max(6, Math.min(128, Math.round(immersiveFitBasePx * zoom)));
-  }, [immersiveAssembly, immersiveFitBasePx, zoom]);
+  useEffect(() => {
+    if (!narrowEditCanvasLayout || !generationResult) return;
+    const el = immersiveGridMeasureRef.current;
+    if (!el) return;
+
+    const pinch0 = { d0: 0, s0: 1 };
+    let tracking = false;
+
+    const syncStart = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      const a = e.touches[0];
+      const b = e.touches[1];
+      pinch0.d0 = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      pinch0.s0 = mobileCanvasPinchScaleRef.current;
+      if (pinch0.d0 < 10) pinch0.d0 = 10;
+      tracking = true;
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) syncStart(e);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length < 2) {
+        tracking = false;
+        return;
+      }
+      if (!tracking) syncStart(e);
+      const a = e.touches[0];
+      const b = e.touches[1];
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      e.preventDefault();
+      const next = Math.max(
+        0.35,
+        Math.min(4, pinch0.s0 * (d / pinch0.d0)),
+      );
+      setMobileCanvasPinchScale(next);
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) tracking = false;
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd, { passive: true });
+    el.addEventListener("touchcancel", onTouchEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [narrowEditCanvasLayout, generationResult]);
+
+  const editorCellPx = useMemo(() => {
+    if (!generationResult) return 12 * zoom;
+    if (immersiveAssembly) {
+      const scaled = Math.round(gridFitCapPx * zoom);
+      return Math.max(6, Math.min(128, scaled));
+    }
+    const narrowEditFit =
+      !immersiveAssembly &&
+      narrowWorkbench &&
+      mobileWorkbenchStep === "edit";
+    const scale = narrowEditFit ? mobileCanvasPinchScale : zoom;
+    const raw = Math.round(gridFitCapPx * scale);
+    return Math.max(4, Math.min(128, raw));
+  }, [
+    generationResult,
+    gridFitCapPx,
+    immersiveAssembly,
+    narrowWorkbench,
+    mobileWorkbenchStep,
+    zoom,
+    mobileCanvasPinchScale,
+  ]);
+
+  const bumpMobilePinch = useCallback((delta: number) => {
+    setMobileCanvasPinchScale((s) =>
+      Math.max(0.35, Math.min(4, Number((s + delta).toFixed(2)))),
+    );
+  }, []);
+
+  const bumpDesktopZoom = useCallback(
+    (delta: number) => {
+      setZoom(Math.max(0.5, Math.min(3, Number((zoom + delta).toFixed(1)))));
+    },
+    [setZoom, zoom],
+  );
 
   useEffect(() => {
     if (!narrowWorkbench) return;
@@ -808,7 +965,7 @@ export function EditorShell() {
         payload.generationResult.width,
         payload.generationResult.height,
       );
-      downloadBlob(blob, `${base}.png`);
+      await downloadBlob(blob, `${base}.png`);
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "PNG 导出失败");
     }
@@ -826,7 +983,7 @@ export function EditorShell() {
         payload.generationResult.width,
         payload.generationResult.height,
       );
-      downloadBlob(blob, `${base}.pdf`);
+      await downloadBlob(blob, `${base}.pdf`);
     } catch (err) {
       setExportError(err instanceof Error ? err.message : "PDF 导出失败");
     }
@@ -1874,18 +2031,29 @@ export function EditorShell() {
                   type="button"
                   aria-label="缩小"
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg font-medium text-loom-on-surface-variant ring-1 ring-loom-outline-variant/20 transition hover:bg-loom-surface-low"
-                  onClick={() => setZoom(Math.max(0.5, Number((zoom - 0.1).toFixed(1))))}
+                  onClick={() =>
+                    narrowEditCanvasLayout
+                      ? bumpMobilePinch(-0.1)
+                      : bumpDesktopZoom(-0.1)
+                  }
                 >
                   −
                 </button>
                 <span className="min-w-[2.75rem] text-center text-xs font-semibold tabular-nums text-loom-on-surface">
-                  {Math.round(zoom * 100)}%
+                  {narrowEditCanvasLayout
+                    ? Math.round(mobileCanvasPinchScale * 100)
+                    : Math.round(zoom * 100)}
+                  %
                 </span>
                 <button
                   type="button"
                   aria-label="放大"
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg font-medium text-loom-on-surface-variant ring-1 ring-loom-outline-variant/20 transition hover:bg-loom-surface-low"
-                  onClick={() => setZoom(Math.min(3, Number((zoom + 0.1).toFixed(1))))}
+                  onClick={() =>
+                    narrowEditCanvasLayout
+                      ? bumpMobilePinch(0.1)
+                      : bumpDesktopZoom(0.1)
+                  }
                 >
                   +
                 </button>
@@ -2021,13 +2189,26 @@ export function EditorShell() {
               >
                 <div
                   ref={immersiveGridMeasureRef}
-                  className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain rounded-lg border border-loom-outline-variant/20 bg-white shadow-sm [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]"
+                  className={cn(
+                    "min-h-0 min-w-0 flex-1 overscroll-contain rounded-lg border border-loom-outline-variant/20 bg-white shadow-sm [-webkit-overflow-scrolling:touch]",
+                    mobileSplitUi &&
+                      mobileWorkbenchStep === "edit" &&
+                      !immersiveAssembly
+                      ? mobileNarrowCanvasPinchOverflow
+                        ? "overflow-auto [touch-action:pan-x_pan-y]"
+                        : "overflow-y-auto overflow-x-hidden [touch-action:pan-y]"
+                      : "overflow-auto [touch-action:pan-x_pan-y]",
+                  )}
                 >
                 {(() => {
                   void eraserDisplayTick;
                   const gw = generationResult?.width ?? targetGridWidth;
                   const gh = generationResult?.height ?? targetGridHeight;
-                  const cellPx = immersiveCellPx;
+                  const cellPx = editorCellPx;
+                  const narrowEditCanvas =
+                    !immersiveAssembly &&
+                    narrowWorkbench &&
+                    mobileWorkbenchStep === "edit";
                   const liveCells = generationResult
                     ? (eraserSessionRef.current.draft ?? generationResult.cells)
                     : null;
@@ -2035,13 +2216,17 @@ export function EditorShell() {
                   return (
                     <div
                       className={cn(
-                        "flex min-h-full min-w-min flex-col items-center px-3 py-4 sm:px-8 sm:py-8",
+                        "flex flex-col items-center px-3 py-4 sm:px-8 sm:py-8",
+                        narrowEditCanvas
+                          ? "min-h-0 w-full max-w-full"
+                          : "min-h-full min-w-min",
                         immersiveAssembly && "px-2 py-3 sm:px-4 sm:py-4",
                       )}
                     >
                       <p
                         className={cn(
-                          "mb-4 w-full max-w-[min(100%,80rem)] text-center text-[11px] text-loom-on-surface-variant",
+                          "w-full max-w-[min(100%,80rem)] text-center text-[11px] text-loom-on-surface-variant",
+                          narrowEditCanvas ? "mb-2" : "mb-4",
                           immersiveAssembly && "mb-2 text-[10px] sm:mb-3 sm:text-[11px]",
                         )}
                       >
@@ -2051,9 +2236,15 @@ export function EditorShell() {
                           : " · 上传图片并生成后填充颜色与色号"}
                       </p>
                       <div
-                        className="inline-grid select-none [touch-action:pan-x_pan-y]"
+                        className={cn(
+                          "inline-grid shrink-0 select-none",
+                          narrowEditCanvas
+                            ? "[touch-action:pan-y]"
+                            : "[touch-action:pan-x_pan-y]",
+                        )}
                         style={{
                           gridTemplateColumns: `repeat(${gw}, ${cellPx}px)`,
+                          gridAutoRows: `${cellPx}px`,
                           width: gw * cellPx,
                         }}
                         onPointerLeave={() => setHoverGridCell(null)}
@@ -2147,8 +2338,16 @@ export function EditorShell() {
                   )}
                   aria-live="polite"
                 >
-                  坐标 {hoverGridCell ? `${hoverGridCell.x}，${hoverGridCell.y}` : "—"} · 缩放{" "}
-                  {Math.round(zoom * 100)}% · 已填充{" "}
+                  坐标 {hoverGridCell ? `${hoverGridCell.x}，${hoverGridCell.y}` : "—"} ·{" "}
+                  {narrowEditCanvasLayout ? (
+                    <>
+                      捏合 {Math.round(mobileCanvasPinchScale * 100)}%（双指缩放）· 已填充{" "}
+                    </>
+                  ) : (
+                    <>
+                      缩放 {Math.round(zoom * 100)}% · 已填充{" "}
+                    </>
+                  )}
                   {generationResult
                     ? `${generationResult.filledBeads} / ${generationResult.totalBeads}`
                     : "—"}
@@ -2188,26 +2387,74 @@ export function EditorShell() {
                   </span>
                 </button>
                 {!mobileEditToolsExpanded ? (
-                  <div className="flex min-h-[52px] items-center gap-2 border-b border-loom-outline-variant/10 bg-loom-surface-lowest/95 px-2 py-1.5 lg:hidden">
+                  <div className="flex min-h-[4.75rem] items-center gap-2 border-b border-loom-outline-variant/10 bg-loom-surface-lowest/95 px-2 py-2 lg:hidden">
                     <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-x]">
-                      <div className="flex w-max gap-1.5 pr-1 pt-0.5">
-                        {generationResult
-                          ? colorUsageStats.map((item) => (
-                              <button
-                                key={item.masterId}
-                                type="button"
-                                title={cellEditorDisplayCode(selectedBrand, item.masterId)}
-                                className={cn(
-                                  "size-10 shrink-0 rounded-xl ring-1 ring-loom-outline-variant/30 transition",
-                                  selectedMasterColorId === item.masterId
-                                    ? "ring-2 ring-loom-primary"
-                                    : "hover:ring-loom-primary-container/40",
-                                )}
-                                style={{ backgroundColor: item.hex }}
-                                onClick={() => setSelectedMasterColorId(item.masterId)}
-                              />
-                            ))
-                          : null}
+                      <div className="flex w-max items-stretch gap-2 pr-1 pt-0.5">
+                        {generationResult ? (
+                          <>
+                            <div
+                              className="flex aspect-square w-[4.25rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl bg-emerald-600 px-1.5 text-center shadow-sm ring-1 ring-emerald-700/30"
+                              aria-hidden
+                            >
+                              <span
+                                className="text-[11px] font-bold leading-none text-white/95"
+                                aria-hidden
+                              >
+                                ⓘ
+                              </span>
+                              <span className="text-[10px] font-semibold leading-tight text-white/90">
+                                共计
+                              </span>
+                              <span className="font-mono text-sm font-bold tabular-nums leading-none text-white">
+                                {colorUsageStats.length}色
+                              </span>
+                            </div>
+                            {colorUsageStats.map((item) => {
+                              const fg = labelTextColorForHex(item.hex);
+                              return (
+                                <button
+                                  key={item.masterId}
+                                  type="button"
+                                  title={`${cellEditorDisplayCode(selectedBrand, item.masterId)} · ${item.count} 颗`}
+                                  className={cn(
+                                    "flex aspect-square w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl p-1.5 text-center shadow-sm ring-1 ring-black/10 transition",
+                                    selectedMasterColorId === item.masterId
+                                      ? "ring-2 ring-loom-primary ring-offset-2 ring-offset-loom-surface-lowest"
+                                      : "hover:ring-loom-primary-container/35",
+                                  )}
+                                  style={{ backgroundColor: item.hex }}
+                                  onClick={() => setSelectedMasterColorId(item.masterId)}
+                                >
+                                  <span
+                                    className="w-full truncate text-center font-mono text-xs font-bold tabular-nums leading-none"
+                                    style={{
+                                      color: fg,
+                                      textShadow:
+                                        fg === "#ffffff"
+                                          ? "0 0 2px rgba(0,0,0,0.55)"
+                                          : "0 0 2px rgba(255,255,255,0.45)",
+                                    }}
+                                  >
+                                    {cellEditorDisplayCode(selectedBrand, item.masterId)}
+                                  </span>
+                                  <span
+                                    className="text-xs font-semibold tabular-nums leading-none"
+                                    style={{
+                                      color: fg,
+                                      opacity: 0.95,
+                                      textShadow:
+                                        fg === "#ffffff"
+                                          ? "0 0 2px rgba(0,0,0,0.45)"
+                                          : "0 0 2px rgba(255,255,255,0.4)",
+                                    }}
+                                  >
+                                    {item.count}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </>
+                        ) : null}
                       </div>
                     </div>
                     <div className="flex shrink-0 flex-col gap-1">
@@ -2310,7 +2557,7 @@ export function EditorShell() {
                             colorUsageStats,
                             generationResult.filledBeads,
                           );
-                          downloadBlob(
+                          void downloadBlob(
                             new Blob([csv], { type: "text/csv;charset=utf-8" }),
                             `color-stats-${selectedBrand}.csv`,
                           );
@@ -2326,34 +2573,48 @@ export function EditorShell() {
                     </p>
                   ) : (
                     <div className="max-h-[min(42vh,360px)] overflow-y-auto pr-0.5">
-                      <div className="grid grid-cols-6 gap-1.5">
+                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 sm:gap-1.5">
                         {colorUsageStats.map((item) => {
                           const denom = Math.max(1, generationResult!.filledBeads);
                           const pct = (item.count / denom) * 100;
+                          const fg = labelTextColorForHex(item.hex);
                           return (
                             <button
                               key={item.masterId}
                               type="button"
                               title={`${formatMasterOptionLabel(selectedBrand, item.masterId)} · ${item.count} 颗 (${pct.toFixed(1)}%)`}
                               className={cn(
-                                "flex aspect-square min-h-0 w-full flex-col items-center justify-end rounded-md p-0.5 text-left ring-1 ring-loom-outline-variant/20 transition hover:ring-loom-primary-container/50",
+                                "flex aspect-square min-h-0 w-full flex-col items-center justify-center gap-1 rounded-xl p-1.5 text-center shadow-sm ring-1 ring-black/8 transition hover:ring-loom-primary-container/45",
                                 selectedMasterColorId === item.masterId &&
-                                  "ring-2 ring-loom-primary",
+                                  "ring-2 ring-loom-primary ring-offset-2 ring-offset-white",
                               )}
                               style={{ backgroundColor: item.hex }}
                               onClick={() => setSelectedMasterColorId(item.masterId)}
                             >
                               <span
-                                className="w-full truncate px-0.5 text-center font-mono text-[9px] font-bold leading-tight"
+                                className="w-full truncate px-0.5 text-center font-mono text-[11px] font-bold leading-none sm:text-[9px]"
                                 style={{
-                                  color: labelTextColorForHex(item.hex),
+                                  color: fg,
                                   textShadow:
-                                    labelTextColorForHex(item.hex) === "#ffffff"
+                                    fg === "#ffffff"
                                       ? "0 0 2px rgba(0,0,0,0.5)"
-                                      : "0 0 1px rgba(255,255,255,0.6)",
+                                      : "0 0 2px rgba(255,255,255,0.45)",
                                 }}
                               >
                                 {cellEditorDisplayCode(selectedBrand, item.masterId)}
+                              </span>
+                              <span
+                                className="text-[11px] font-semibold tabular-nums leading-none sm:text-[10px]"
+                                style={{
+                                  color: fg,
+                                  opacity: 0.95,
+                                  textShadow:
+                                    fg === "#ffffff"
+                                      ? "0 0 2px rgba(0,0,0,0.4)"
+                                      : "0 0 2px rgba(255,255,255,0.35)",
+                                }}
+                              >
+                                {item.count}
                               </span>
                             </button>
                           );
@@ -2444,7 +2705,7 @@ export function EditorShell() {
                           className="shrink-0 rounded-lg bg-loom-surface-low px-2.5 py-1.5 text-[11px] font-medium text-loom-on-surface ring-1 ring-loom-outline-variant/25 hover:bg-white"
                           onClick={() => {
                             const csv = buildMissingColorsCsv(selectedBrand, missingColorAnalysis);
-                            downloadBlob(
+                            void downloadBlob(
                               new Blob([csv], { type: "text/csv;charset=utf-8" }),
                               `missing-colors-${selectedBrand}.csv`,
                             );

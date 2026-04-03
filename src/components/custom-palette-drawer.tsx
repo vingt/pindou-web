@@ -294,7 +294,7 @@ export function CustomPaletteDrawer({
               className="px-2 py-2 text-xs font-medium text-stone-700 underline-offset-2 hover:underline"
               onClick={() => {
                 const csv = buildCustomPaletteExportCsv([...draft].sort((a, b) => a.localeCompare(b)));
-                downloadBlob(
+                void downloadBlob(
                   new Blob([csv], { type: "text/csv;charset=utf-8" }),
                   `palette-${brand}-custom.csv`,
                 );
@@ -306,7 +306,7 @@ export function CustomPaletteDrawer({
               type="button"
               className="px-2 py-2 text-xs font-medium text-stone-700 underline-offset-2 hover:underline"
               onClick={() => {
-                downloadBlob(
+                void downloadBlob(
                   new Blob([PALETTE_CSV_IMPORT_TEMPLATE], { type: "text/csv;charset=utf-8" }),
                   "palette-import-template.csv",
                 );

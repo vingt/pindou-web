@@ -134,7 +134,7 @@ export async function exportProjectJsonFile(): Promise<void> {
     /\s+/g,
     "-",
   );
-  downloadBlob(
+  await downloadBlob(
     new Blob([json], { type: "application/json;charset=utf-8" }),
     `${base}.pattern.json`,
   );
