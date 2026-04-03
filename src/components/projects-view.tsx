@@ -131,7 +131,6 @@ function ProjectCardPreview({ projectId }: { projectId: string }) {
       {loading ? (
         <div className="h-full w-full animate-pulse bg-loom-surface-container-highest/70" aria-hidden />
       ) : src ? (
-        // eslint-disable-next-line @next/next/no-img-element -- data URL previews from stored projects
         <img
           src={src}
           alt=""

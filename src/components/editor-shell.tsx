@@ -217,8 +217,6 @@ export function EditorShell() {
     targetGridHeight,
     setTargetGridWidth,
     setTargetGridHeight,
-    setEditedGenerationResult,
-    setMissingColorAnalysis,
     setZoom,
     setActiveTool,
     immersiveAssembly,

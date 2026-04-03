@@ -44,7 +44,6 @@ export function BrandSettingsProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     const loaded = loadSettings();
     if (loaded) {
-      /* eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot client restore from localStorage */
       setBundleState(loaded);
     }
     skipNextPersist.current = true;

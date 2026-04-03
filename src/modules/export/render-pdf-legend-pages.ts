@@ -74,7 +74,7 @@ export function buildLegendPdfCanvases(
     );
     y += 22;
     ctx.fillText(
-      `使用色数：${r.usedColorCount}　已填豆数：${r.filledBeads}　总格数：${r.totalBeads}`,
+      `使用色数：${r.usedColorCount} 已填豆数：${r.filledBeads} 总格数：${r.totalBeads}`,
       PAD,
       y,
     );

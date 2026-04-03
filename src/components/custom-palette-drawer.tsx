@@ -97,11 +97,9 @@ export function CustomPaletteDrawer({
 
   useEffect(() => {
     if (!open) return;
-    /* eslint-disable react-hooks/set-state-in-effect -- reset drawer local state when opened */
     setDraft(new Set(initialSelection));
     setSearch("");
     setErr(null);
-    /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, initialSelection]);
 
   const toggle = useCallback((id: string) => {

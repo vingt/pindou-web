@@ -264,7 +264,7 @@ export function renderSinglePagePdfExportCanvas(
   ctx.fillStyle = "#475569";
   ctx.font = PDF_META_FONT;
   ctx.fillText(
-    `画布：${w} × ${h}　已填豆数：${result.filledBeads}　使用色数：${result.usedColorCount}　总格数：${result.totalBeads}`,
+    `画布：${w} × ${h} 已填豆数：${result.filledBeads} 使用色数：${result.usedColorCount} 总格数：${result.totalBeads}`,
     pad,
     footerY,
   );

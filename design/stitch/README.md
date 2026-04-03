@@ -15,7 +15,7 @@
 ## 文件说明
 
 - **`code.html`**：Tailwind CDN + 内联 `tailwind.config` 颜色/圆角。可直接搜 `#[0-9a-fA-F]{6}` 取色，或整段复制 `theme.extend.colors`。
-- **`screen.png`**：该页截图，对齐布局用。
+- ~~**`screen.png`**~~：原 Stitch 截图已移出仓库以减小体积；布局以 `code.html` 与已实现页面为准。
 - **`indigo_loom/DESIGN.md`**：设计系统文字说明（Digital Loom / 无硬边框 / 大圆角 / 主色渐变等）。
 
 ## 与实现的关系

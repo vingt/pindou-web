@@ -2,7 +2,10 @@
   "name": "test",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
+    "clean": "rm -rf .next out",
+    "clean:deep": "rm -rf .next out android native-android",
     "dev": "next dev",
     "dev:3001": "next dev -p 3001",
     "build": "next build",
@@ -27,14 +30,15 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.46.0"
   }
 }
