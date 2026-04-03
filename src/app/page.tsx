@@ -15,7 +15,7 @@ export default function HomePage() {
       <header className="fixed top-0 z-50 w-full border-b border-loom-outline-variant/20 bg-loom-surface/90 backdrop-blur-xl supports-[backdrop-filter]:bg-loom-surface/85">
         <div className="mx-auto flex w-full min-w-0 max-w-7xl flex-wrap items-center justify-between gap-2 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top,0px))] sm:gap-3 sm:px-6 sm:pb-3 lg:px-8">
           <SiteBrandLink subtitle="照片 → 网格 → 导出" size="lg" className="min-w-0 max-w-[min(100%,14rem)] sm:max-w-none" />
-          <AppNav className="order-3 w-full min-w-0 justify-start overflow-x-auto lg:order-none lg:w-auto lg:justify-center lg:overflow-visible" />
+          <AppNav className="order-3 w-full min-w-0 justify-start overflow-x-auto [touch-action:pan-x_pan-y] lg:order-none lg:w-auto lg:justify-center lg:overflow-visible" />
           <Link
             href="/editor"
             className="loom-primary-gradient shrink-0 rounded-full px-4 py-2 text-sm font-semibold text-white transition active:scale-[0.98] hover:opacity-90 sm:px-5"

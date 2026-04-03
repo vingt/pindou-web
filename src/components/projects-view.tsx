@@ -306,7 +306,7 @@ export function ProjectsView() {
         </header>
 
         {recentProjects.length > 0 ? (
-          <div className="mb-4 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-loom-outline-variant/15 bg-loom-surface-lowest/90 px-3 py-3 ring-1 ring-loom-outline-variant/10 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:px-4 [&::-webkit-scrollbar]:hidden">
+          <div className="mb-4 flex max-w-full flex-nowrap items-center gap-2 overflow-x-auto rounded-xl border border-loom-outline-variant/15 bg-loom-surface-lowest/90 px-3 py-3 ring-1 ring-loom-outline-variant/10 [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x_pan-y] sm:flex-wrap sm:overflow-visible sm:px-4 [&::-webkit-scrollbar]:hidden">
             <button
               type="button"
               disabled={batchBusy}

@@ -9,7 +9,7 @@ import {
   useState,
   type ChangeEvent,
   type CSSProperties,
-  type PointerEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   ColorSwatchSelect,
@@ -249,6 +249,15 @@ export function EditorShell() {
     before: PatternCell[][] | null;
     draft: PatternCell[][] | null;
   }>({ before: null, draft: null });
+  /** 触摸画笔/滴管/修复：略拖则视为滚动画布，松手才落笔，避免与滚动抢手势。 */
+  const touchEditPendingRef = useRef<{
+    kind: "brush" | "eyedropper" | "repair";
+    cx: number;
+    cy: number;
+    sx: number;
+    sy: number;
+    cancelled: boolean;
+  } | null>(null);
   const [eraserDisplayTick, setEraserDisplayTick] = useState(0);
   const [editorToast, setEditorToast] = useState<string | null>(null);
   const [schemeCompareOpen, setSchemeCompareOpen] = useState(false);
@@ -580,15 +589,55 @@ export function EditorShell() {
     return bestId ?? selectedMasterColorId ?? cells[y][x].masterColorId;
   };
 
-  const handleCellPointerDown = (x: number, y: number, event: PointerEvent) => {
+  const handleCellPointerDown = (x: number, y: number, event: ReactPointerEvent) => {
     if (event.button !== 0) return;
     const gr = useProjectStore.getState().generationResult;
     if (!gr) return;
     const current = gr.cells[y]?.[x];
     if (!current) return;
     if (activeTool === "select") return;
+
+    const attachTouchEditGesture = (
+      kind: "brush" | "eyedropper" | "repair",
+      onCommit: () => void,
+    ) => {
+      if (event.pointerType !== "touch") {
+        onCommit();
+        return;
+      }
+      touchEditPendingRef.current = {
+        kind,
+        cx: x,
+        cy: y,
+        sx: event.clientX,
+        sy: event.clientY,
+        cancelled: false,
+      };
+      const onMove = (ev: globalThis.PointerEvent) => {
+        const p = touchEditPendingRef.current;
+        if (!p || p.kind !== kind) return;
+        if (Math.hypot(ev.clientX - p.sx, ev.clientY - p.sy) > 14) {
+          p.cancelled = true;
+        }
+      };
+      const end = () => {
+        const p = touchEditPendingRef.current;
+        touchEditPendingRef.current = null;
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", end);
+        window.removeEventListener("pointercancel", end);
+        if (!p || p.kind !== kind || p.cancelled) return;
+        onCommit();
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", end);
+      window.addEventListener("pointercancel", end);
+    };
+
     if (activeTool === "eyedropper") {
-      setSelectedMasterColorId(current.masterColorId);
+      attachTouchEditGesture("eyedropper", () => {
+        setSelectedMasterColorId(current.masterColorId);
+      });
       return;
     }
     if (activeTool === "eraser") {
@@ -607,21 +656,35 @@ export function EditorShell() {
     }
     if (activeTool === "brush") {
       if (!selectedMasterColorId || selectedMasterColorId === current.masterColorId) return;
-      const nextCells = cloneCells(gr.cells);
-      nextCells[y][x] = { ...nextCells[y][x], masterColorId: selectedMasterColorId };
-      applyEditedCells(nextCells);
+      attachTouchEditGesture("brush", () => {
+        const latest = useProjectStore.getState().generationResult;
+        if (!latest) return;
+        const cur = latest.cells[y]?.[x];
+        if (!cur || !selectedMasterColorId || selectedMasterColorId === cur.masterColorId) return;
+        const nextCells = cloneCells(latest.cells);
+        nextCells[y][x] = { ...nextCells[y][x], masterColorId: selectedMasterColorId };
+        applyEditedCells(nextCells);
+      });
       return;
     }
     if (activeTool === "repair") {
       const nextMasterColorId = getRepairFallbackColor(gr.cells, x, y);
       if (nextMasterColorId === current.masterColorId) return;
-      const nextCells = cloneCells(gr.cells);
-      nextCells[y][x] = { ...nextCells[y][x], masterColorId: nextMasterColorId };
-      applyEditedCells(nextCells);
+      attachTouchEditGesture("repair", () => {
+        const latest = useProjectStore.getState().generationResult;
+        if (!latest) return;
+        const cur = latest.cells[y]?.[x];
+        if (!cur) return;
+        const nid = getRepairFallbackColor(latest.cells, x, y);
+        if (nid === cur.masterColorId) return;
+        const nextCells = cloneCells(latest.cells);
+        nextCells[y][x] = { ...nextCells[y][x], masterColorId: nid };
+        applyEditedCells(nextCells);
+      });
     }
   };
 
-  const handleCellPointerEnter = (x: number, y: number, event: PointerEvent) => {
+  const handleCellPointerEnter = (x: number, y: number, event: ReactPointerEvent) => {
     if (activeTool !== "eraser") return;
     if ((event.buttons & 1) === 0) return;
     if (!eraserSessionRef.current.draft) return;
@@ -1012,18 +1075,18 @@ export function EditorShell() {
   return (
     <div
       className={cn(
-        "min-h-0 bg-transparent text-loom-on-surface",
+        "flex min-h-0 min-w-0 flex-1 flex-col bg-transparent text-loom-on-surface",
         immersiveAssembly
-          ? "flex min-h-0 flex-1 flex-col p-0 sm:p-1 lg:p-2"
+          ? "p-0 sm:p-1 lg:p-2"
           : "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:p-4 sm:pb-4 lg:p-6",
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full min-w-0 flex-col gap-4",
+          "mx-auto flex w-full min-w-0 flex-1 flex-col gap-4",
           immersiveAssembly
-            ? "max-w-none min-h-0 flex-1"
-            : "max-w-[min(100%,var(--workspace-max))]",
+            ? "max-w-none min-h-0"
+            : "max-w-[min(100%,var(--workspace-max))] min-h-0",
         )}
       >
         <div
@@ -1072,9 +1135,9 @@ export function EditorShell() {
 
         <main
           className={cn(
-            "grid min-h-0 grid-cols-1 items-stretch gap-3 sm:gap-4 lg:min-h-[calc(100dvh-5rem)] lg:gap-3",
+            "grid min-h-0 min-w-0 flex-1 grid-cols-1 items-stretch gap-3 sm:gap-4 lg:min-h-[calc(100dvh-5rem)] lg:gap-3",
             immersiveAssembly
-              ? "min-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] flex-1 lg:min-h-[calc(100dvh-0.5rem)]"
+              ? "min-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] lg:min-h-[calc(100dvh-0.5rem)]"
               : "min-h-[min(400px,calc(100dvh-9rem))] max-sm:gap-2 lg:min-h-[min(760px,calc(100dvh-7rem))] lg:grid-cols-[minmax(240px,320px)_minmax(0,1fr)_minmax(260px,340px)]",
           )}
         >
@@ -1085,7 +1148,7 @@ export function EditorShell() {
             )}
           >
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-3 pt-3 pb-2 lg:px-4">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-2 [-webkit-overflow-scrolling:touch] lg:px-4">
               <input
                 ref={sourceImageInputRef}
                 type="file"
@@ -1613,7 +1676,7 @@ export function EditorShell() {
               <div className="pointer-events-none absolute inset-0 -z-0 opacity-[0.14] loom-bead-pattern" aria-hidden />
               <div
                 className={cn(
-                  "absolute left-1/2 top-4 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-loom-outline-variant/20 bg-white/95 px-2 py-2 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-visible sm:gap-1.5 sm:px-3 [&::-webkit-scrollbar]:hidden",
+                  "absolute left-1/2 top-4 z-20 flex w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-xl border border-loom-outline-variant/20 bg-white/95 px-2 py-2 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x_pan-y] sm:flex-wrap sm:justify-center sm:overflow-visible sm:gap-1.5 sm:px-3 [&::-webkit-scrollbar]:hidden",
                   immersiveAssembly && "hidden",
                 )}
                 role="toolbar"
@@ -1787,7 +1850,7 @@ export function EditorShell() {
                       显示全部
                     </button>
                   </div>
-                  <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch]">
+                  <div className="min-h-0 min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-0.5 [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]">
                     <div className="flex w-max gap-1.5 pr-1">
                       {colorUsageStats.map((s) => {
                         const active = immersiveFocusMasterId === s.masterId;
@@ -1835,7 +1898,7 @@ export function EditorShell() {
               >
                 <div
                   ref={immersiveGridMeasureRef}
-                  className="min-h-0 flex-1 overflow-auto rounded-lg border border-loom-outline-variant/20 bg-white shadow-sm"
+                  className="min-h-0 min-w-0 flex-1 overflow-auto overscroll-contain rounded-lg border border-loom-outline-variant/20 bg-white shadow-sm [-webkit-overflow-scrolling:touch] [touch-action:pan-x_pan-y]"
                 >
                 {(() => {
                   void eraserDisplayTick;
@@ -1865,7 +1928,7 @@ export function EditorShell() {
                           : " · 上传图片并生成后填充颜色与色号"}
                       </p>
                       <div
-                        className="inline-grid select-none"
+                        className="inline-grid select-none [touch-action:pan-x_pan-y]"
                         style={{
                           gridTemplateColumns: `repeat(${gw}, ${cellPx}px)`,
                           width: gw * cellPx,
@@ -1978,7 +2041,7 @@ export function EditorShell() {
             )}
           >
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-3 pb-2 pt-3 lg:px-4">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-y-contain px-3 pb-2 pt-3 [-webkit-overflow-scrolling:touch] lg:px-4">
                 <section>
                   <p className="mb-2 text-xs font-bold text-loom-on-surface">当前画笔</p>
                   {!generationResult ? (

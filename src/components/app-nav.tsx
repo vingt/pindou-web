@@ -40,7 +40,7 @@ export function AppNav({ className, variant = "default" }: AppNavProps) {
       className={cn(
         "flex max-w-full items-center font-medium tracking-tight text-sm touch-manipulation",
         variant === "compact"
-          ? "flex-nowrap overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          ? "flex-nowrap overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x_pan-y] [&::-webkit-scrollbar]:hidden"
           : "flex-wrap",
         gap,
         className,

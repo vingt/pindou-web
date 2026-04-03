@@ -97,7 +97,7 @@ export default function SettingsPage() {
       </header>
 
       <div className="flex flex-col gap-8">
-        <div className="-mx-1 flex w-[calc(100%+0.5rem)] max-w-none flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:w-full sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 md:w-fit [&::-webkit-scrollbar]:hidden">
+        <div className="-mx-1 flex w-[calc(100%+0.5rem)] max-w-none flex-nowrap gap-1.5 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x_pan-y] sm:mx-0 sm:w-full sm:flex-wrap sm:gap-2 sm:overflow-visible sm:px-0 sm:pb-0 md:w-fit [&::-webkit-scrollbar]:hidden">
           {TABS.map((t) => (
             <button
               key={t.id}
